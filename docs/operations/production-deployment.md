@@ -48,27 +48,61 @@ https://<deployment-name>.convex.cloud
 
 Create or import the Vercel project from this repository.
 
-Use the default Next.js build settings:
+Use these build settings. The build command is also committed in `vercel.json`
+so Git-triggered preview and production deployments deploy Convex first, then
+build the frontend with the matching Convex URL.
 
 | Setting | Value |
 |---|---|
 | Framework Preset | Next.js |
 | Install Command | `npm install` |
-| Build Command | `npm run build` |
+| Build Command | `npx convex deploy --cmd-url-env-var-name NEXT_PUBLIC_CONVEX_URL --cmd 'npm run build'` |
 | Output Directory | `.next` |
 
-Add these Vercel environment variables for Production and Preview:
+Add these Vercel environment variables:
 
-| Variable | Required | Value |
-|---|---:|---|
-| `NEXT_PUBLIC_CONVEX_URL` | Yes | Production Convex URL from step 2. |
-| `NEXT_PUBLIC_APP_URL` | Yes | Public Vercel URL, for example `https://your-app.vercel.app`. |
+| Variable | Environment | Required | Value |
+|---|---|---:|---|
+| `CONVEX_DEPLOY_KEY` | Production | Yes | Convex production deploy key. |
+| `CONVEX_DEPLOY_KEY` | Preview | Yes | Convex preview deploy key from the Convex project settings. |
+| `NEXT_PUBLIC_APP_URL` | Production | Yes | Public Vercel URL, for example `https://your-app.vercel.app`. |
+
+Generate the production deploy key with:
+
+```bash
+npx convex deployment token create vercel-production --prod
+```
+
+Generate the preview deploy key from the Convex dashboard:
+
+```text
+Project Settings -> Preview Deploy Keys -> Generate Preview Deploy Key
+```
+
+Add both keys to Vercel as `CONVEX_DEPLOY_KEY`, scoped to their matching Vercel
+environment. Without the Preview key, Vercel pull request deployments will not
+be able to create isolated Convex preview backends.
 
 `NEXT_PUBLIC_APP_URL` controls the base URL embedded into generated participant
 QR codes. Update it if you later move from a Vercel preview URL to a custom
 domain.
 
-## 4. Deploy Vercel
+`NEXT_PUBLIC_CONVEX_URL` is supplied by `npx convex deploy` during the Vercel
+build, so Vercel preview deployments can point at their own isolated Convex
+preview backend.
+
+## 4. GitHub CI/CD
+
+GitHub Actions runs `npm ci`, `npm audit --audit-level=moderate`, and
+`npm run verify` on pull requests and pushes to `main`.
+
+Vercel is connected to the GitHub repository:
+
+- Pull requests create Vercel Preview deployments.
+- Merges to `main` create Vercel Production deployments.
+- The Vercel build command deploys Convex automatically before building Next.js.
+
+## 5. Deploy Vercel
 
 Deploy from the Vercel dashboard or CLI. After deployment, open:
 
@@ -80,11 +114,12 @@ Log in with the Convex `ADMIN_PASSCODE`, then create one test participant and
 generate a QR code. Open the participant URL on a phone and confirm the viewer
 loads realtime data.
 
-## 5. Event-Day Checks
+## 6. Event-Day Checks
 
 Before sharing QR codes:
 
-- Confirm Vercel is using the production `NEXT_PUBLIC_CONVEX_URL`.
+- Confirm Vercel production has a production `CONVEX_DEPLOY_KEY`.
+- Confirm Vercel preview has a preview `CONVEX_DEPLOY_KEY`.
 - Confirm Convex has the production `ADMIN_PASSCODE`.
 - Confirm `NEXT_PUBLIC_APP_URL` matches the URL guests will actually open.
 - Create all participants and upload their photos.

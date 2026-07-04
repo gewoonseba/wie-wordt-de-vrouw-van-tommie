@@ -3,11 +3,23 @@
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { ReactNode, useMemo } from "react";
 
+function getConvexUrl() {
+  const url = process.env.NEXT_PUBLIC_CONVEX_URL;
+
+  if (!url) {
+    if (typeof window === "undefined") {
+      return "https://placeholder.convex.cloud";
+    }
+
+    throw new Error("Missing NEXT_PUBLIC_CONVEX_URL environment variable.");
+  }
+
+  return url;
+}
+
 export function Providers({ children }: { children: ReactNode }) {
   const convex = useMemo(() => {
-    const url =
-      process.env.NEXT_PUBLIC_CONVEX_URL ?? "https://placeholder.convex.cloud";
-    return new ConvexReactClient(url);
+    return new ConvexReactClient(getConvexUrl());
   }, []);
 
   return <ConvexProvider client={convex}>{children}</ConvexProvider>;

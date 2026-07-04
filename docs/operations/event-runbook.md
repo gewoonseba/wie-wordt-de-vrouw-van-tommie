@@ -2,8 +2,8 @@
 
 ## Before the Party
 
-1. Deploy Convex and Vercel.
-2. Set production environment variables.
+1. Deploy Convex and Vercel using `docs/operations/production-deployment.md`.
+2. Set production environment variables in Convex and Vercel.
 3. Login as admin.
 4. Create every participant.
 5. Upload participant pictures.

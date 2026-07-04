@@ -52,8 +52,25 @@ in Convex environment variables before using the app for the actual event.
 ## Verification
 
 ```bash
-npm run typecheck
-npm run lint
-npm test
-npm run build
+npm run verify
 ```
+
+## Dependency Versions
+
+Dependencies are pinned to exact versions. Keep `.npmrc` set to
+`save-exact=true` so future `npm install <package>` commands do not add version
+ranges.
+
+## Production
+
+Host the backend on Convex and the frontend on Vercel. The full checklist is in
+[`docs/operations/production-deployment.md`](docs/operations/production-deployment.md).
+
+Required production values:
+
+| Platform | Variable | Notes |
+|---|---|---|
+| Vercel | `NEXT_PUBLIC_CONVEX_URL` | Production Convex URL, for example `https://example.convex.cloud`. |
+| Vercel | `NEXT_PUBLIC_APP_URL` | Final Vercel production URL, used for participant QR links. |
+| Convex | `ADMIN_PASSCODE` | Strong event admin passcode. Do not use the development default. |
+| Convex | `ADMIN_SESSION_TTL_HOURS` | Optional admin session lifetime. Defaults to `12`. |

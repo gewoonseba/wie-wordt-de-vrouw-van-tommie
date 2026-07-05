@@ -107,6 +107,11 @@ Add these GitHub repository secrets:
 |---|---:|---|
 | `CONVEX_PREVIEW_DEPLOY_KEY` | Yes | Convex project Preview Deploy Key. It should look like `preview:<team>:<project>\|...`. |
 | `VERCEL_TOKEN` | Yes | Vercel access token with access to the project. |
+
+Add these GitHub repository variables:
+
+| Variable | Required | Value |
+|---|---:|---|
 | `VERCEL_ORG_ID` | Yes | Vercel team/user ID for the project. |
 | `VERCEL_PROJECT_ID` | Yes | Vercel project ID. |
 

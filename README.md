@@ -23,19 +23,17 @@ Realtime tracker for the bachelor party game described in `spel-tracking-spec.md
    cp .env.example .env.local
    ```
 
-3. Start Convex:
+3. Start the local app:
 
    ```bash
-   npm run convex:dev
+   npm run dev:all
    ```
 
-4. In another terminal, start Next.js:
+4. Open `http://localhost:3000/admin/login`.
 
-   ```bash
-   npm run dev
-   ```
-
-5. Open `http://localhost:3000/admin/login`.
+`npm run dev:all` starts Convex, runs Next.js, and keeps both services behind
+`localhost:3000` so local browser previews can connect to Convex through the same
+origin.
 
 The default development admin passcode is `tommie-admin`. Set `ADMIN_PASSCODE`
 in Convex environment variables before using the app for the actual event.

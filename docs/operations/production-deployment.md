@@ -96,9 +96,38 @@ preview backend.
 GitHub Actions runs `npm ci`, `npm audit --audit-level=moderate`, and
 `npm run verify` on pull requests and pushes to `main`.
 
+Pull requests from branches in this repository also run a GitHub-managed preview
+deployment after verification succeeds. The preview job runs the committed
+Vercel build command, so it deploys Convex first and then deploys the matching
+Next.js preview to Vercel.
+
+Add these GitHub repository secrets:
+
+| Secret | Required | Value |
+|---|---:|---|
+| `CONVEX_PREVIEW_DEPLOY_KEY` | Yes | Convex project Preview Deploy Key. It should look like `preview:<team>:<project>\|...`. |
+| `VERCEL_TOKEN` | Yes | Vercel access token with access to the project. |
+| `VERCEL_ORG_ID` | Yes | Vercel team/user ID for the project. |
+| `VERCEL_PROJECT_ID` | Yes | Vercel project ID. |
+
+Create the Convex preview deploy key from:
+
+```text
+Project Settings -> Preview Deploy Keys -> Generate Preview Deploy Key
+```
+
+Find the Vercel IDs by running `npx vercel link` locally and reading the ignored
+`.vercel/project.json`, or from the Vercel project settings.
+
+The GitHub preview workflow is the preferred PR preview path. If Vercel's Git
+integration is also left enabled for pull requests, either add the same Convex
+Preview Deploy Key to Vercel's Preview `CONVEX_DEPLOY_KEY` environment variable
+or disable Vercel's automatic PR deployments to avoid duplicate/failing preview
+checks.
+
 Vercel is connected to the GitHub repository:
 
-- Pull requests create Vercel Preview deployments.
+- Pull requests create Vercel Preview deployments through GitHub Actions.
 - Merges to `main` create Vercel Production deployments.
 - The Vercel build command deploys Convex automatically before building Next.js.
 

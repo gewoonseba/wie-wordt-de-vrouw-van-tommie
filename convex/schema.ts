@@ -13,6 +13,7 @@ export default defineSchema({
   participants: defineTable({
     name: v.string(),
     photoStorageId: v.optional(v.id("_storage")),
+    previewPhotoPath: v.optional(v.string()),
     points: v.number(),
     canDate: v.boolean(),
     currentTeamId: v.optional(v.id("teams")),

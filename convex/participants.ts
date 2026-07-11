@@ -30,7 +30,7 @@ export const listForAdmin = query({
         isActive: participant.isActive,
         photoUrl: participant.photoStorageId
           ? await ctx.storage.getUrl(participant.photoStorageId)
-          : null
+          : (participant.previewPhotoPath ?? null)
       }))
     );
   }

@@ -144,6 +144,15 @@ describe("participant roster", () => {
       await ctx.db.query("settings").withIndex("by_key", (q) => q.eq("key", "event")).unique()
     );
     expect(settings?.tommieMoney).toBe(1_000);
+    const scoreboard = await t.query(api.scoreboard.get, {});
+    expect(scoreboard.participants).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "Chiel",
+          photoUrl: "/participants/chiel.png"
+        })
+      ])
+    );
   });
 
   it("lets an admin add and manage roster participants", async () => {

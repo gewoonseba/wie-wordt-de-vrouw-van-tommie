@@ -46,11 +46,17 @@ export const preview = mutation({
       if (!existing) {
         await ctx.db.insert("participants", {
           ...participant,
+          previewPhotoPath: `/participants/${participant.seedKey}.png`,
           isActive: true,
           createdAt: now,
           updatedAt: now
         });
         created += 1;
+      } else if (!existing.previewPhotoPath) {
+        await ctx.db.patch(existing._id, {
+          previewPhotoPath: `/participants/${participant.seedKey}.png`,
+          updatedAt: now
+        });
       }
     }
 

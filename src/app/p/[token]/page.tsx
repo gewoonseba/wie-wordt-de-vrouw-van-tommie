@@ -1,10 +1,5 @@
-import { ViewerClient } from "@/components/viewer/ViewerClient";
+import { redirect } from "next/navigation";
 
-export default async function ParticipantPage({
-  params
-}: {
-  params: Promise<{ token: string }>;
-}) {
-  const { token } = await params;
-  return <ViewerClient token={token} />;
+export default function ParticipantPage() {
+  redirect("/");
 }

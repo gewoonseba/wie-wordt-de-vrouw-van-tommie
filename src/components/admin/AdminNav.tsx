@@ -1,16 +1,31 @@
 "use client";
 
+import { useMutation } from "convex/react";
 import { useRouter } from "next/navigation";
 
+import { api } from "../../../convex/_generated/api";
+import {
+  clearAdminToken,
+  useAdminToken
+} from "@/components/admin/useAdminToken";
 import { Button } from "@/components/ui/button";
 
 export function AdminNav() {
+  const adminToken = useAdminToken();
+  const revokeSession = useMutation(api.authTokens.logout);
   const router = useRouter();
 
-  function logout() {
-    window.localStorage.removeItem("adminToken");
-    window.dispatchEvent(new Event("admin-token-change"));
-    router.push("/admin/login");
+  async function logout() {
+    try {
+      if (adminToken) {
+        await revokeSession({ adminToken });
+      }
+    } catch (error) {
+      console.error("Failed to revoke the admin session", error);
+    } finally {
+      clearAdminToken();
+      router.push("/admin/login");
+    }
   }
 
   return (
@@ -19,7 +34,7 @@ export function AdminNav() {
         <p className="text-sm font-medium text-muted-foreground">Admin</p>
         <h1 className="text-2xl font-semibold tracking-tight">Control room</h1>
       </div>
-      <Button type="button" onClick={logout} variant="outline">
+      <Button type="button" onClick={() => void logout()} variant="outline">
         Logout
       </Button>
     </header>

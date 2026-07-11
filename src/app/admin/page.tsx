@@ -9,7 +9,10 @@ import { AdminNav } from "@/components/admin/AdminNav";
 import { DateEligibilityControl } from "@/components/admin/DateEligibilityControl";
 import { MoneyAdjustmentForm } from "@/components/admin/MoneyAdjustmentForm";
 import { ScoreAdjustmentForm } from "@/components/admin/ScoreAdjustmentForm";
-import { useAdminToken } from "@/components/admin/useAdminToken";
+import {
+  clearAdminToken,
+  useAdminToken
+} from "@/components/admin/useAdminToken";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,11 +28,10 @@ import { getInitials } from "@/lib/text";
 export default function AdminDashboardPage() {
   const adminToken = useAdminToken();
   const router = useRouter();
-  const scoreboard = useQuery(api.scoreboard.get);
+  const scoreboard = useQuery(api.scoreboard.get, adminToken ? {} : "skip");
 
   function onSessionExpired() {
-    window.localStorage.removeItem("adminToken");
-    window.dispatchEvent(new Event("admin-token-change"));
+    clearAdminToken();
     router.replace("/admin/login");
   }
 

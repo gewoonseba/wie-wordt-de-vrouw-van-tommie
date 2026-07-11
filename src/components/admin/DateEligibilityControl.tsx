@@ -7,6 +7,7 @@ import type { Id } from "../../../convex/_generated/dataModel";
 import { api } from "../../../convex/_generated/api";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
+import { isAdminSessionExpired } from "@/lib/admin-session";
 
 type DateEligibilityControlProps = {
   adminToken: string;
@@ -37,11 +38,11 @@ export function DateEligibilityControl({
       await setDateEligibility({ adminToken, participantId, canDate: desiredState });
       setSuccess(desiredState ? "Saved: date allowed." : "Saved: no date allowed.");
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : "Date status failed.";
-      if (message.includes("session is missing or expired")) {
+      if (isAdminSessionExpired(caught)) {
         onSessionExpired();
         return;
       }
+      const message = caught instanceof Error ? caught.message : "Date status failed.";
       setError(message);
     } finally {
       setSubmitting(false);

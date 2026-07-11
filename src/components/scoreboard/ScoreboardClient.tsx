@@ -10,6 +10,25 @@ import { Podium } from "@/components/scoreboard/Podium";
 import { RankingList } from "@/components/scoreboard/RankingList";
 import { rankParticipants, selectPodium } from "@/lib/scoreboard";
 
+function ScoreboardStatus({
+  title,
+  description
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <main className="mx-auto flex min-h-screen w-full max-w-3xl items-center px-4 py-8">
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle as="h1">{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
+        </CardHeader>
+      </Card>
+    </main>
+  );
+}
+
 class ScoreboardErrorBoundary extends Component<
   { children: ReactNode },
   { failed: boolean }
@@ -27,16 +46,10 @@ class ScoreboardErrorBoundary extends Component<
   render() {
     if (this.state.failed) {
       return (
-        <main className="mx-auto flex min-h-screen w-full max-w-3xl items-center px-4 py-8">
-          <Card className="w-full">
-            <CardHeader>
-              <CardTitle as="h1">De stand kon niet worden geladen</CardTitle>
-              <CardDescription>
-                Vernieuw de pagina. Blijft dit gebeuren, vraag dan de host om hulp.
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        </main>
+        <ScoreboardStatus
+          title="De stand kon niet worden geladen"
+          description="Vernieuw de pagina. Blijft dit gebeuren, vraag dan de host om hulp."
+        />
       );
     }
 
@@ -49,14 +62,10 @@ function ScoreboardContent() {
 
   if (scoreboard === undefined) {
     return (
-      <main className="mx-auto flex min-h-screen w-full max-w-3xl items-center px-4 py-8">
-        <Card className="w-full">
-          <CardHeader>
-            <CardTitle as="h1">De live stand komt eraan…</CardTitle>
-            <CardDescription>Scores en Tommie&apos;s pot worden opgehaald.</CardDescription>
-          </CardHeader>
-        </Card>
-      </main>
+      <ScoreboardStatus
+        title="De live stand komt eraan…"
+        description="Scores en Tommie's pot worden opgehaald."
+      />
     );
   }
 

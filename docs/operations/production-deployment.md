@@ -30,7 +30,19 @@ Set these values in the Convex production environment:
 
 Do not use the development default `tommie-admin` for the event.
 
-Deploy the backend before the frontend:
+Production rollout must be coordinated. This release removes Convex APIs that
+the previous frontend still calls, so deploying the backend first creates a
+temporary compatibility window until the matching frontend is live. Schedule a
+maintenance window, prepare both deployments, deploy Convex, and immediately
+deploy the matching Vercel frontend. Do not reintroduce the retired APIs solely
+to bridge this window.
+
+If rollback is required, redeploy the compatible backend and frontend together;
+rolling back only Vercel leaves the old frontend calling removed Convex APIs.
+Pull-request previews do not share this production risk because each preview
+uses its isolated Convex deployment.
+
+During the coordinated rollout, deploy the backend with:
 
 ```bash
 npm run convex:deploy
@@ -79,12 +91,20 @@ Required repository configuration:
 ## 5. Production smoke test
 
 1. Open `/` without a token or login and confirm the public scoreboard loads.
-2. Open `/admin/login`, authenticate with `ADMIN_PASSCODE`, and verify one score
-   adjustment, one explicit date-state update, and one money adjustment.
-3. Confirm each change appears on `/` in realtime.
-4. Open a representative legacy `/p/anything` URL and confirm it redirects to
+2. Open `/admin/login`, authenticate with `ADMIN_PASSCODE`, and record the exact
+   baseline score and date state for one participant plus the exact baseline
+   value of Tommie’s pot.
+3. Apply a known non-zero score delta, set the participant’s date state to the
+   opposite boolean, and apply a known non-zero money delta. Keep both deltas so
+   their exact inverses can be submitted.
+4. Confirm the expected score, date state, and pot appear on `/` in realtime.
+5. Restore the baseline by applying the inverse score and money deltas and
+   setting date eligibility back to the recorded boolean.
+6. Confirm `/admin` and `/` both show the exact recorded baselines after the
+   realtime restoration; refresh `/` once to confirm the restored state persists.
+7. Open a representative legacy `/p/anything` URL and confirm it redirects to
    `/` without a participant-token lookup.
-5. Confirm there are no controls for participant setup, teams, cards, quiz
+8. Confirm there are no controls for participant setup, teams, cards, quiz
    rewards, date tasks, or payout configuration.
 
 ## Data compatibility

@@ -8,6 +8,7 @@ import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { isAdminSessionExpired } from "@/lib/admin-session";
 import { parseAdjustment, projectedTotal } from "@/lib/adjustments";
 
 type ScoreAdjustmentFormProps = {
@@ -51,11 +52,11 @@ export function ScoreAdjustmentForm({
       setInput("");
       setSuccess(`Saved: ${result.points} points.`);
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : "Score adjustment failed.";
-      if (message.includes("session is missing or expired")) {
+      if (isAdminSessionExpired(caught)) {
         onSessionExpired();
         return;
       }
+      const message = caught instanceof Error ? caught.message : "Score adjustment failed.";
       setError(message);
     } finally {
       setSubmitting(false);

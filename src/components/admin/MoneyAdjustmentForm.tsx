@@ -7,10 +7,9 @@ import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { isAdminSessionExpired } from "@/lib/admin-session";
 import { parseAdjustment, projectedTotal } from "@/lib/adjustments";
-
-const formatMoney = (amount: number) =>
-  new Intl.NumberFormat("nl-BE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(amount);
+import { formatEuro } from "@/lib/scoreboard";
 
 type MoneyAdjustmentFormProps = {
   adminToken: string;
@@ -43,13 +42,13 @@ export function MoneyAdjustmentForm({ adminToken, currentTotal, onSessionExpired
     try {
       const result = await adjustMoney({ adminToken, delta: parsed.value });
       setInput("");
-      setSuccess(`Saved: ${formatMoney(result.tommieMoney)}.`);
+      setSuccess(`Saved: ${formatEuro(result.tommieMoney)}.`);
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : "Money adjustment failed.";
-      if (message.includes("session is missing or expired")) {
+      if (isAdminSessionExpired(caught)) {
         onSessionExpired();
         return;
       }
+      const message = caught instanceof Error ? caught.message : "Money adjustment failed.";
       setError(message);
     } finally {
       setSubmitting(false);
@@ -75,8 +74,8 @@ export function MoneyAdjustmentForm({ adminToken, currentTotal, onSessionExpired
             value={input}
           />
           <FieldDescription>
-            Current: {formatMoney(currentTotal)}
-            {projection === null ? "" : ` · Projected: ${formatMoney(projection)}`}
+            Current: {formatEuro(currentTotal)}
+            {projection === null ? "" : ` · Projected: ${formatEuro(projection)}`}
           </FieldDescription>
           {error ? <FieldError>{error}</FieldError> : null}
         </Field>

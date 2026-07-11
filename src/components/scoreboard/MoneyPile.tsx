@@ -11,6 +11,14 @@ import {
   MAX_MONEY_PILE_LAYERS
 } from "@/lib/scoreboard";
 
+function getPileDescription(layerCount: number) {
+  if (layerCount === 0) return "De pot is nog leeg.";
+  if (layerCount === MAX_MONEY_PILE_LAYERS) {
+    return "De geldstapel zit op zijn visuele maximum.";
+  }
+  return "Elke laag staat voor € 500.";
+}
+
 export function MoneyPile({ amount }: { amount: number }) {
   const layerCount = getMoneyPileLayerCount(amount);
   const layers = Array.from({ length: layerCount }, (_, index) => index);
@@ -47,11 +55,7 @@ export function MoneyPile({ amount }: { amount: number }) {
         </div>
 
         <p className="text-center text-sm text-muted-foreground">
-          {layerCount === 0
-            ? "De pot is nog leeg."
-            : layerCount === MAX_MONEY_PILE_LAYERS
-              ? "De geldstapel zit op zijn visuele maximum."
-              : "Elke laag staat voor € 500."}
+          {getPileDescription(layerCount)}
         </p>
       </CardContent>
     </Card>

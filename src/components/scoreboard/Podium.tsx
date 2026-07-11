@@ -11,13 +11,26 @@ import { getInitials } from "@/lib/text";
 import { cn } from "@/lib/utils";
 import type { ScoreboardParticipant } from "@/lib/scoreboard";
 
-const podiumPlacement = [
-  "md:col-start-2 md:row-start-1 md:-translate-y-6",
-  "md:col-start-1 md:row-start-1",
-  "md:col-start-3 md:row-start-1"
+const PODIUM_SLOTS = [
+  {
+    placement: "md:col-start-2 md:row-start-1 md:-translate-y-6",
+    label: "1e plaats",
+    badgeVariant: "default" as const,
+    cardClassName: "md:min-h-80"
+  },
+  {
+    placement: "md:col-start-1 md:row-start-1",
+    label: "2e plaats",
+    badgeVariant: "secondary" as const,
+    cardClassName: undefined
+  },
+  {
+    placement: "md:col-start-3 md:row-start-1",
+    label: "3e plaats",
+    badgeVariant: "outline" as const,
+    cardClassName: undefined
+  }
 ];
-
-const medalLabels = ["1e plaats", "2e plaats", "3e plaats"];
 
 export function Podium({ participants }: { participants: ScoreboardParticipant[] }) {
   return (
@@ -40,15 +53,17 @@ export function Podium({ participants }: { participants: ScoreboardParticipant[]
         </Card>
       ) : (
         <ol className="grid gap-4 md:grid-cols-3 md:items-end md:pt-6">
-          {participants.map((participant, index) => (
+          {participants.map((participant, index) => {
+            const slot = PODIUM_SLOTS[index];
+            return (
             <li
               key={participant._id}
-              className={cn("min-w-0", podiumPlacement[index])}
+              className={cn("min-w-0", slot.placement)}
             >
-              <Card className={cn("h-full", index === 0 && "md:min-h-80")}>
+              <Card className={cn("h-full", slot.cardClassName)}>
                 <CardHeader className="items-center text-center">
-                  <Badge variant={index === 0 ? "default" : index === 1 ? "secondary" : "outline"}>
-                    {medalLabels[index]}
+                  <Badge variant={slot.badgeVariant}>
+                    {slot.label}
                   </Badge>
                   <Avatar className="size-20">
                     {participant.photoUrl ? (
@@ -79,7 +94,8 @@ export function Podium({ participants }: { participants: ScoreboardParticipant[]
                 </CardContent>
               </Card>
             </li>
-          ))}
+            );
+          })}
         </ol>
       )}
     </section>

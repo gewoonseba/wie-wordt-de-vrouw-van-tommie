@@ -119,6 +119,23 @@ describe("public scoreboard", () => {
 });
 
 describe("admin tracker mutations", () => {
+  it("rejects tracker mutations after logout revokes the session", async () => {
+    const t = createTest();
+    const token = "admin-session";
+    const participantId = await seedParticipant(t);
+    await seedAdminSession(t, token);
+
+    await t.mutation(api.authTokens.logout, { adminToken: token });
+
+    await expect(
+      t.mutation(api.trackerAdmin.adjustScore, {
+        adminToken: token,
+        participantId,
+        delta: 1
+      })
+    ).rejects.toThrow("Admin session is missing or expired.");
+  });
+
   it("applies signed score deltas transactionally", async () => {
     const t = createTest();
     const token = "admin-session";
@@ -182,15 +199,36 @@ describe("admin tracker mutations", () => {
     const participantId = await seedParticipant(t, { canDate: false });
     await seedAdminSession(t, token);
 
-    for (const canDate of [true, true]) {
-      await expect(
-        t.mutation(api.trackerAdmin.setDateEligibility, {
-          adminToken: token,
-          participantId,
-          canDate
-        })
-      ).resolves.toEqual({ canDate: true });
-    }
+    await expect(
+      t.mutation(api.trackerAdmin.setDateEligibility, {
+        adminToken: token,
+        participantId,
+        canDate: true
+      })
+    ).resolves.toEqual({ canDate: true });
+    const eligibleParticipant = await t.run((ctx) => ctx.db.get(participantId));
+    expect(eligibleParticipant?.canDate).toBe(true);
+
+    await expect(
+      t.mutation(api.trackerAdmin.setDateEligibility, {
+        adminToken: token,
+        participantId,
+        canDate: false
+      })
+    ).resolves.toEqual({ canDate: false });
+    const ineligibleParticipant = await t.run((ctx) => ctx.db.get(participantId));
+    expect(ineligibleParticipant?.canDate).toBe(false);
+
+    await expect(
+      t.mutation(api.trackerAdmin.setDateEligibility, {
+        adminToken: token,
+        participantId,
+        canDate: false
+      })
+    ).resolves.toEqual({ canDate: false });
+    const repeatedParticipant = await t.run((ctx) => ctx.db.get(participantId));
+    expect(repeatedParticipant?.canDate).toBe(false);
+    expect(repeatedParticipant?.updatedAt).toBe(ineligibleParticipant?.updatedAt);
   });
 
   it("creates settings on the first valid money adjustment", async () => {

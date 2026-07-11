@@ -8,6 +8,36 @@ import { api } from "../../../../convex/_generated/api";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { useAdminToken } from "@/components/admin/useAdminToken";
 import { createParticipantUrl, generateToken } from "@/lib/tokens";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@/components/ui/table";
+import { getInitials } from "@/lib/text";
 
 export default function ParticipantsPage() {
   const adminToken = useAdminToken();
@@ -40,13 +70,18 @@ export default function ParticipantsPage() {
 
   if (!adminToken) {
     return (
-      <main className="page narrow">
-        <section className="panel">
-          <h1>Admin login required</h1>
-          <Link className="button" href="/admin/login">
-            Login
-          </Link>
-        </section>
+      <main className="mx-auto flex min-h-screen w-full max-w-3xl items-center px-4 py-8">
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle as="h1">Admin login required</CardTitle>
+            <CardDescription>Login to manage participants.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button nativeButton={false} render={<Link href="/admin/login" />}>
+              Login
+            </Button>
+          </CardContent>
+        </Card>
       </main>
     );
   }
@@ -113,65 +148,82 @@ export default function ParticipantsPage() {
   }
 
   return (
-    <main className="page">
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
       <AdminNav />
-      <div className="grid">
-        <section className="panel">
-          <h2>Add participant</h2>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle as="h2">Add participant</CardTitle>
+          </CardHeader>
+          <CardContent>
           <form onSubmit={onCreateParticipant}>
-            <div className="field">
-              <label htmlFor="participantName">Name</label>
-              <input
-                id="participantName"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="Gaetan"
-              />
-            </div>
-            <button className="primary" type="submit">
-              Add player
-            </button>
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="participantName">Name</FieldLabel>
+                <Input
+                  id="participantName"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="Gaetan"
+                />
+              </Field>
+              <Button type="submit">Add player</Button>
+            </FieldGroup>
           </form>
-        </section>
+          </CardContent>
+        </Card>
 
-        <section className="panel">
-          <h2>Create team</h2>
+        <Card>
+          <CardHeader>
+            <CardTitle as="h2">Create team</CardTitle>
+          </CardHeader>
+          <CardContent>
           <form onSubmit={onCreateTeam}>
-            <div className="field">
-              <label htmlFor="teamName">Team name</label>
-              <input
-                id="teamName"
-                value={teamName}
-                onChange={(event) => setTeamName(event.target.value)}
-                placeholder="Team Pisang"
-              />
-            </div>
-            <button className="primary" type="submit">
-              Create team
-            </button>
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="teamName">Team name</FieldLabel>
+                <Input
+                  id="teamName"
+                  value={teamName}
+                  onChange={(event) => setTeamName(event.target.value)}
+                  placeholder="Team Pisang"
+                />
+              </Field>
+              <Button type="submit">Create team</Button>
+            </FieldGroup>
           </form>
-        </section>
+          </CardContent>
+        </Card>
       </div>
 
-      <section className="panel" style={{ marginTop: 16 }}>
-        <h2>Team assignment</h2>
-        <div className="field">
-          <label htmlFor="teamSelect">Team</label>
-          <select
-            id="teamSelect"
-            value={selectedTeamId}
-            onChange={(event) => setSelectedTeamId(event.target.value)}
-          >
-            <option value="">Select a team</option>
-            {teams?.map((team) => (
-              <option key={team._id} value={team._id}>
-                {team.name}
-              </option>
-            ))}
-          </select>
-        </div>
+      <Card>
+        <CardHeader>
+          <CardTitle as="h2">Team assignment</CardTitle>
+          <CardDescription>Select a team and toggle its members.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-5">
+          <Field>
+            <FieldLabel htmlFor="teamSelect">Team</FieldLabel>
+            <Select
+              value={selectedTeamId || null}
+              onValueChange={(value) => setSelectedTeamId(value ?? "")}
+            >
+              <SelectTrigger id="teamSelect" className="w-full">
+                <SelectValue placeholder="Select a team" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {teams?.map((team) => (
+                    <SelectItem key={team._id} value={team._id}>
+                      {team.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
         {selectedTeamId ? (
-          <div className="card-list">
+          <div className="flex flex-wrap gap-3">
             {participants?.map((participant) => {
               const selectedTeam = teams?.find(
                 (team) => team._id === selectedTeamId
@@ -179,55 +231,62 @@ export default function ParticipantsPage() {
               const isMember =
                 selectedTeam?.participantIds.includes(participant._id) ?? false;
               return (
-                <label className="pill" key={participant._id}>
-                  <input
-                    type="checkbox"
+                <Field
+                  className="w-auto rounded-3xl border bg-card px-3 py-2"
+                  key={participant._id}
+                  orientation="horizontal"
+                >
+                  <Checkbox
+                    aria-label={`Include ${participant.name} in selected team`}
                     checked={isMember}
-                    onChange={(event) =>
-                      toggleTeamMember(participant._id, event.target.checked)
+                    onCheckedChange={(checked) =>
+                      toggleTeamMember(participant._id, checked)
                     }
-                    style={{ width: "auto", minHeight: 0 }}
                   />
-                  {participant.name}
-                </label>
+                  <FieldLabel>{participant.name}</FieldLabel>
+                </Field>
               );
             })}
           </div>
         ) : (
-          <p className="muted">Select a team to edit its members.</p>
+          <p className="text-sm text-muted-foreground">
+            Select a team to edit its members.
+          </p>
         )}
-      </section>
+        </CardContent>
+      </Card>
 
-      <section className="panel" style={{ marginTop: 16 }}>
-        <h2>Participants</h2>
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Photo</th>
-              <th>Name</th>
-              <th>Points</th>
-              <th>Date</th>
-              <th>Photo upload</th>
-              <th>QR token</th>
-            </tr>
-          </thead>
-          <tbody>
+      <Card>
+        <CardHeader>
+          <CardTitle as="h2">Participants</CardTitle>
+        </CardHeader>
+        <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Photo</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Points</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead>Photo upload</TableHead>
+              <TableHead>QR token</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {participants?.map((participant) => (
-              <tr key={participant._id}>
-                <td>
-                  {participant.photoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      className="avatar"
-                      alt=""
-                      src={participant.photoUrl}
-                    />
-                  ) : (
-                    <div className="avatar" />
-                  )}
-                </td>
-                <td>
-                  <input
+              <TableRow key={participant._id}>
+                <TableCell>
+                  <Avatar size="lg">
+                    {participant.photoUrl ? (
+                      <AvatarImage alt="" src={participant.photoUrl} />
+                    ) : null}
+                    <AvatarFallback>{getInitials(participant.name)}</AvatarFallback>
+                  </Avatar>
+                </TableCell>
+                <TableCell>
+                  <Input
+                    aria-label={`Name for ${participant.name}`}
+                    className="min-w-40"
                     value={participant.name}
                     onChange={(event) =>
                       updateParticipant({
@@ -239,11 +298,13 @@ export default function ParticipantsPage() {
                       })
                     }
                   />
-                </td>
-                <td>{participant.points}</td>
-                <td>
-                  <button
+                </TableCell>
+                <TableCell>{participant.points}</TableCell>
+                <TableCell>
+                  <Button
+                    aria-label={`Set date status for ${participant.name}`}
                     type="button"
+                    variant={participant.canDate ? "default" : "secondary"}
                     onClick={() =>
                       updateParticipant({
                         adminToken,
@@ -255,10 +316,12 @@ export default function ParticipantsPage() {
                     }
                   >
                     {participant.canDate ? "Can date" : "Spent"}
-                  </button>
-                </td>
-                <td>
-                  <input
+                  </Button>
+                </TableCell>
+                <TableCell>
+                  <Input
+                    aria-label={`Upload photo for ${participant.name}`}
+                    className="min-w-52"
                     type="file"
                     accept="image/*"
                     onChange={(event) => {
@@ -268,25 +331,31 @@ export default function ParticipantsPage() {
                       }
                     }}
                   />
-                </td>
-                <td>
-                  <button type="button" onClick={() => onGenerateQr(participant._id)}>
+                </TableCell>
+                <TableCell>
+                  <Button
+                    aria-label={`Generate QR token for ${participant.name}`}
+                    type="button"
+                    onClick={() => onGenerateQr(participant._id)}
+                  >
                     Generate QR
-                  </button>
+                  </Button>
                   {generatedUrls[participant._id] ? (
-                    <div style={{ marginTop: 10 }}>
+                    <div className="mt-3 flex max-w-72 flex-col gap-2">
                       <QRCodeSVG value={generatedUrls[participant._id]} size={96} />
-                      <p className="muted" style={{ wordBreak: "break-all" }}>
+                      <p className="break-all text-xs text-muted-foreground">
                         {generatedUrls[participant._id]}
                       </p>
+                      <Badge variant="secondary">Generated</Badge>
                     </div>
                   ) : null}
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
-      </section>
+          </TableBody>
+        </Table>
+        </CardContent>
+      </Card>
     </main>
   );
 }

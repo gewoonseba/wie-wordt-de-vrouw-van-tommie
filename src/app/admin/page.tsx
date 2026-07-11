@@ -5,6 +5,24 @@ import Link from "next/link";
 import { api } from "../../../convex/_generated/api";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { useAdminToken } from "@/components/admin/useAdminToken";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@/components/ui/table";
 
 export default function AdminDashboardPage() {
   const adminToken = useAdminToken();
@@ -23,13 +41,18 @@ export default function AdminDashboardPage() {
 
   if (!adminToken) {
     return (
-      <main className="page narrow">
-        <section className="panel">
-          <h1>Admin login required</h1>
-          <Link className="button" href="/admin/login">
-            Login
-          </Link>
-        </section>
+      <main className="mx-auto flex min-h-screen w-full max-w-3xl items-center px-4 py-8">
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle as="h1">Admin login required</CardTitle>
+            <CardDescription>Login to manage the tracker.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button nativeButton={false} render={<Link href="/admin/login" />}>
+              Login
+            </Button>
+          </CardContent>
+        </Card>
       </main>
     );
   }
@@ -42,56 +65,76 @@ export default function AdminDashboardPage() {
   const progress = Math.min(100, Math.round((money / target) * 100));
 
   return (
-    <main className="page">
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
       <AdminNav />
-      <div className="grid">
-        <section className="panel">
-          <h2>Tommie honeymoon money</h2>
-          <div className="score">EUR {money.toLocaleString("nl-BE")}</div>
-          <p className="muted">Target: EUR {target.toLocaleString("nl-BE")}</p>
-          <div className="money-bar" aria-label={`${progress}%`}>
-            <div style={{ width: `${progress}%` }} />
-          </div>
-        </section>
-        <section className="panel">
-          <h2>Pending physical draws</h2>
-          <div className="score">{pendingDraws?.length ?? 0}</div>
-          <p className="muted">Resolve these from the scoring screen.</p>
-        </section>
-        <section className="panel">
-          <h2>Date-ready players</h2>
-          <div className="score">
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardTitle as="h2">Tommie honeymoon money</CardTitle>
+            <CardDescription>
+              Target: EUR {target.toLocaleString("nl-BE")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            <div className="text-3xl font-semibold tracking-tight">
+              EUR {money.toLocaleString("nl-BE")}
+            </div>
+            <Progress aria-label={`${progress}%`} value={progress} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle as="h2">Pending physical draws</CardTitle>
+            <CardDescription>Resolve these from the scoring screen.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-semibold tracking-tight">
+              {pendingDraws?.length ?? 0}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle as="h2">Date-ready players</CardTitle>
+            <CardDescription>Players currently allowed to start a date.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-semibold tracking-tight">
             {participants?.filter((participant) => participant.canDate).length ?? 0}
-          </div>
-          <p className="muted">Players currently allowed to start a date.</p>
-        </section>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <section className="panel" style={{ marginTop: 16 }}>
-        <h2>Leaderboard</h2>
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Player</th>
-              <th>Points</th>
-              <th>Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            {leaderboard.map((participant) => (
-              <tr key={participant._id}>
-                <td>{participant.name}</td>
-                <td>{participant.points}</td>
-                <td>
-                  <span className={participant.canDate ? "pill ok" : "pill"}>
-                    {participant.canDate ? "Can date" : "Spent"}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
+      <Card>
+        <CardHeader>
+          <CardTitle as="h2">Leaderboard</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Player</TableHead>
+                <TableHead>Points</TableHead>
+                <TableHead>Date</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {leaderboard.map((participant) => (
+                <TableRow key={participant._id}>
+                  <TableCell className="font-medium">{participant.name}</TableCell>
+                  <TableCell>{participant.points}</TableCell>
+                  <TableCell>
+                    <Badge variant={participant.canDate ? "default" : "secondary"}>
+                      {participant.canDate ? "Can date" : "Spent"}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </main>
   );
 }

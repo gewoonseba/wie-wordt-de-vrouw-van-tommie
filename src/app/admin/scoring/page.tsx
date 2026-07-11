@@ -7,6 +7,37 @@ import { api } from "../../../../convex/_generated/api";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { useAdminToken } from "@/components/admin/useAdminToken";
 import { CardRank, CARD_RANKS, isCardRank } from "@/lib/game-rules";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from "@/components/ui/card";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@/components/ui/table";
 
 function parseCards(input: string): CardRank[] {
   return input
@@ -20,6 +51,23 @@ function parseCards(input: string): CardRank[] {
       return card;
     });
 }
+
+const DATE_TASKS = [
+  "Koprol",
+  "Handstand",
+  "Blote poep laten zien",
+  "Danske placeren",
+  "Een mop vertellen"
+];
+
+const MONEY_SOURCES = [
+  { value: "hiddenTask", label: "Hidden quiz task" },
+  { value: "jokerUse", label: "Joker use" },
+  { value: "standardChallenge", label: "Tommie challenge" },
+  { value: "roundThreeWin", label: "Round 3 win" },
+  { value: "dateMoment", label: "Date moment" },
+  { value: "manual", label: "Manual adjustment" }
+];
 
 export default function ScoringPage() {
   const adminToken = useAdminToken();
@@ -73,13 +121,18 @@ export default function ScoringPage() {
 
   if (!adminToken) {
     return (
-      <main className="page narrow">
-        <section className="panel">
-          <h1>Admin login required</h1>
-          <Link className="button" href="/admin/login">
-            Login
-          </Link>
-        </section>
+      <main className="mx-auto flex min-h-screen w-full max-w-3xl items-center px-4 py-8">
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle as="h1">Admin login required</CardTitle>
+            <CardDescription>Login to manage scoring.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button nativeButton={false} render={<Link href="/admin/login" />}>
+              Login
+            </Button>
+          </CardContent>
+        </Card>
       </main>
     );
   }
@@ -201,72 +254,89 @@ export default function ScoringPage() {
   const dateReadyPlayers = participants?.filter((participant) => participant.canDate);
 
   return (
-    <main className="page">
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
       <AdminNav />
-      {error ? <p className="error">{error}</p> : null}
+      {error ? <FieldError>{error}</FieldError> : null}
 
-      <div className="grid">
-        <section className="panel">
-          <h2>Resolve physical card draw</h2>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle as="h2">Resolve physical card draw</CardTitle>
+            <CardDescription>Record cards from a pending or manual draw.</CardDescription>
+          </CardHeader>
+          <CardContent>
           <form onSubmit={submitCardDraw}>
-            <div className="field">
-              <label htmlFor="obligation">Pending draw</label>
-              <select
-                id="obligation"
-                value={obligationId}
-                onChange={(event) => setObligationId(event.target.value)}
-              >
-                <option value="">Manual draw</option>
-                {pendingDraws?.map((draw) => (
-                  <option key={draw._id} value={draw._id}>
-                    {participantById.get(draw.participantId)?.name ?? "Player"} -{" "}
-                    {draw.cardCount} cards - {draw.activityLabel}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="obligation">Pending draw</FieldLabel>
+                <Select
+                  value={obligationId || null}
+                  onValueChange={(value) => setObligationId(value ?? "")}
+                >
+                  <SelectTrigger id="obligation" className="w-full">
+                    <SelectValue placeholder="Manual draw" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {pendingDraws?.map((draw) => (
+                        <SelectItem key={draw._id} value={draw._id}>
+                          {participantById.get(draw.participantId)?.name ??
+                            "Player"}{" "}
+                          - {draw.cardCount} cards - {draw.activityLabel}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
             {!selectedObligation ? (
               <>
-                <div className="field">
-                  <label htmlFor="cardParticipant">Participant</label>
-                  <select
-                    id="cardParticipant"
-                    value={cardParticipantId}
-                    onChange={(event) => setCardParticipantId(event.target.value)}
+                <Field>
+                  <FieldLabel htmlFor="cardParticipant">Participant</FieldLabel>
+                  <Select
+                    value={cardParticipantId || null}
+                    onValueChange={(value) => setCardParticipantId(value ?? "")}
                   >
-                    <option value="">Select participant</option>
-                    {participants?.map((participant) => (
-                      <option key={participant._id} value={participant._id}>
-                        {participant.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="field">
-                  <label htmlFor="cardReason">Reason</label>
-                  <input
+                    <SelectTrigger id="cardParticipant" className="w-full">
+                      <SelectValue placeholder="Select participant" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {participants?.map((participant) => (
+                          <SelectItem key={participant._id} value={participant._id}>
+                            {participant.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="cardReason">Reason</FieldLabel>
+                  <Input
                     id="cardReason"
                     value={cardReason}
                     onChange={(event) => setCardReason(event.target.value)}
                   />
-                </div>
+                </Field>
               </>
             ) : null}
-            <div className="field">
-              <label htmlFor="cards">Cards drawn</label>
-              <input
+              <Field>
+                <FieldLabel htmlFor="cards">Cards drawn</FieldLabel>
+                <Input
                 id="cards"
                 value={cardInput}
                 onChange={(event) => setCardInput(event.target.value)}
                 placeholder="A, 7, K"
               />
-            </div>
-            <div className="card-list" aria-label="Card ranks">
+              </Field>
+            <div className="flex flex-wrap gap-2" aria-label="Card ranks">
               {CARD_RANKS.map((rank) => (
-                <button
-                  className="card-button"
+                <Button
+                  size="sm"
                   type="button"
                   key={rank}
+                  variant="outline"
                   onClick={() =>
                     setCardInput((current) =>
                       current ? `${current}, ${rank}` : rank
@@ -274,230 +344,297 @@ export default function ScoringPage() {
                   }
                 >
                   {rank}
-                </button>
+                </Button>
               ))}
             </div>
-            <div className="actions">
-              <button className="primary" type="submit">
+            <div className="flex flex-wrap gap-2">
+              <Button type="submit">
                 Save draw
-              </button>
-              <button type="button" onClick={() => setCardInput("")}>
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setCardInput("")}>
                 Clear cards
-              </button>
+              </Button>
             </div>
+            </FieldGroup>
           </form>
-        </section>
+          </CardContent>
+        </Card>
 
-        <section className="panel">
-          <h2>Tommie Date</h2>
+        <Card>
+          <CardHeader>
+            <CardTitle as="h2">Tommie Date</CardTitle>
+            <CardDescription>Start and complete date tasks.</CardDescription>
+          </CardHeader>
+          <CardContent>
           <form onSubmit={submitDateStart}>
-            <div className="field">
-              <label htmlFor="dateParticipant">Eligible participant</label>
-              <select
-                id="dateParticipant"
-                value={dateParticipantId}
-                onChange={(event) => setDateParticipantId(event.target.value)}
-              >
-                <option value="">Select participant</option>
-                {dateReadyPlayers?.map((participant) => (
-                  <option key={participant._id} value={participant._id}>
-                    {participant.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="field">
-              <label htmlFor="dateTask">Task</label>
-              <select
-                id="dateTask"
-                value={dateTask}
-                onChange={(event) => setDateTask(event.target.value)}
-              >
-                <option>Koprol</option>
-                <option>Handstand</option>
-                <option>Blote poep laten zien</option>
-                <option>Danske placeren</option>
-                <option>Een mop vertellen</option>
-              </select>
-            </div>
-            <div className="actions">
-              <button className="primary" type="submit" disabled={!dateParticipantId}>
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="dateParticipant">
+                  Eligible participant
+                </FieldLabel>
+                <Select
+                  value={dateParticipantId || null}
+                  onValueChange={(value) => setDateParticipantId(value ?? "")}
+                >
+                  <SelectTrigger id="dateParticipant" className="w-full">
+                    <SelectValue placeholder="Select participant" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {dateReadyPlayers?.map((participant) => (
+                        <SelectItem key={participant._id} value={participant._id}>
+                          {participant.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="dateTask">Task</FieldLabel>
+                <Select
+                  value={dateTask}
+                  onValueChange={(value) => setDateTask(value ?? "")}
+                >
+                  <SelectTrigger id="dateTask" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {DATE_TASKS.map((task) => (
+                        <SelectItem key={task} value={task}>
+                          {task}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+            <div className="flex flex-wrap gap-2">
+              <Button type="submit" disabled={!dateParticipantId}>
                 Start date
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="outline"
                 disabled={!dateParticipantId}
                 onClick={() => finishDate(true)}
               >
                 Mark success
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="outline"
                 disabled={!dateParticipantId}
                 onClick={() => finishDate(false)}
               >
                 Mark failed
-              </button>
+              </Button>
             </div>
+            </FieldGroup>
           </form>
-        </section>
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="grid" style={{ marginTop: 16 }}>
-        <section className="panel">
-          <h2>Quiz rewards</h2>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle as="h2">Quiz rewards</CardTitle>
+          </CardHeader>
+          <CardContent>
           <form onSubmit={submitQuiz}>
-            <div className="field">
-              <label htmlFor="quizLabel">Round label</label>
-              <input
-                id="quizLabel"
-                value={quizLabel}
-                onChange={(event) => setQuizLabel(event.target.value)}
-              />
-            </div>
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="quizLabel">Round label</FieldLabel>
+                <Input
+                  id="quizLabel"
+                  value={quizLabel}
+                  onChange={(event) => setQuizLabel(event.target.value)}
+                />
+              </Field>
             {teams?.map((team) => (
-              <div className="field" key={team._id}>
-                <label htmlFor={`quiz-${team._id}`}>{team.name} score</label>
-                <input id={`quiz-${team._id}`} name={`quiz-${team._id}`} type="number" />
-              </div>
+              <Field key={team._id}>
+                <FieldLabel htmlFor={`quiz-${team._id}`}>
+                  {team.name} score
+                </FieldLabel>
+                <Input
+                  id={`quiz-${team._id}`}
+                  name={`quiz-${team._id}`}
+                  type="number"
+                />
+              </Field>
             ))}
-            <button className="primary" type="submit">
+            <Button type="submit">
               Create draw obligations
-            </button>
+            </Button>
+            </FieldGroup>
           </form>
-        </section>
+          </CardContent>
+        </Card>
 
-        <section className="panel">
-          <h2>Mini-game rewards</h2>
+        <Card>
+          <CardHeader>
+            <CardTitle as="h2">Mini-game rewards</CardTitle>
+          </CardHeader>
+          <CardContent>
           <form onSubmit={submitMiniGame}>
-            <div className="field">
-              <label htmlFor="miniLabel">Game label</label>
-              <input
-                id="miniLabel"
-                value={miniGameLabel}
-                onChange={(event) => setMiniGameLabel(event.target.value)}
-              />
-            </div>
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="miniLabel">Game label</FieldLabel>
+                <Input
+                  id="miniLabel"
+                  value={miniGameLabel}
+                  onChange={(event) => setMiniGameLabel(event.target.value)}
+                />
+              </Field>
             {teams?.map((team) => (
-              <div className="field" key={team._id}>
-                <label htmlFor={`mini-${team._id}`}>{team.name} cards per person</label>
-                <input
+              <Field key={team._id}>
+                <FieldLabel htmlFor={`mini-${team._id}`}>
+                  {team.name} cards per person
+                </FieldLabel>
+                <Input
                   id={`mini-${team._id}`}
                   name={`mini-${team._id}`}
                   type="number"
                   min="0"
                   max="5"
                 />
-              </div>
+              </Field>
             ))}
-            <button className="primary" type="submit">
+            <Button type="submit">
               Create draw obligations
-            </button>
+            </Button>
+            </FieldGroup>
           </form>
-        </section>
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="grid" style={{ marginTop: 16 }}>
-        <section className="panel">
-          <h2>Tommie money</h2>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle as="h2">Tommie money</CardTitle>
+          </CardHeader>
+          <CardContent>
           <form onSubmit={submitMoney}>
-            <div className="field">
-              <label htmlFor="moneySource">Source</label>
-              <select
-                id="moneySource"
-                value={moneySource}
-                onChange={(event) => setMoneySource(event.target.value)}
-              >
-                <option value="hiddenTask">Hidden quiz task</option>
-                <option value="jokerUse">Joker use</option>
-                <option value="standardChallenge">Tommie challenge</option>
-                <option value="roundThreeWin">Round 3 win</option>
-                <option value="dateMoment">Date moment</option>
-                <option value="manual">Manual adjustment</option>
-              </select>
-            </div>
-            <div className="field">
-              <label htmlFor="moneyAmount">Amount</label>
-              <input
-                id="moneyAmount"
-                type="number"
-                value={moneyAmount}
-                onChange={(event) => setMoneyAmount(Number(event.target.value))}
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="moneyNote">Note</label>
-              <input
-                id="moneyNote"
-                value={moneyNote}
-                onChange={(event) => setMoneyNote(event.target.value)}
-              />
-            </div>
-            <button className="primary" type="submit">
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="moneySource">Source</FieldLabel>
+                <Select
+                  value={moneySource}
+                  onValueChange={(value) => setMoneySource(value ?? "")}
+                >
+                  <SelectTrigger id="moneySource" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {MONEY_SOURCES.map((source) => (
+                        <SelectItem key={source.value} value={source.value}>
+                          {source.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="moneyAmount">Amount</FieldLabel>
+                <Input
+                  id="moneyAmount"
+                  type="number"
+                  value={moneyAmount}
+                  onChange={(event) => setMoneyAmount(Number(event.target.value))}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="moneyNote">Note</FieldLabel>
+                <Input
+                  id="moneyNote"
+                  value={moneyNote}
+                  onChange={(event) => setMoneyNote(event.target.value)}
+                />
+              </Field>
+            <Button type="submit">
               Add money
-            </button>
+            </Button>
+            </FieldGroup>
           </form>
-        </section>
+          </CardContent>
+        </Card>
 
-        <section className="panel">
-          <h2>Settings</h2>
+        <Card>
+          <CardHeader>
+            <CardTitle as="h2">Settings</CardTitle>
+          </CardHeader>
+          <CardContent>
           {settings ? (
             <form onSubmit={saveSettings}>
-              <div className="field">
-                <label htmlFor="tommieTarget">Tommie target</label>
-                <input
-                  id="tommieTarget"
-                  name="tommieTarget"
-                  type="number"
-                  defaultValue={settings.tommieTarget}
-                />
-              </div>
+              <FieldGroup>
+                <Field>
+                  <FieldLabel htmlFor="tommieTarget">Tommie target</FieldLabel>
+                  <Input
+                    id="tommieTarget"
+                    name="tommieTarget"
+                    type="number"
+                    defaultValue={settings.tommieTarget}
+                  />
+                </Field>
               {Object.entries(settings.defaultPayouts).map(([key, value]) => (
-                <div className="field" key={key}>
-                  <label htmlFor={key}>{key}</label>
-                  <input
+                <Field key={key}>
+                  <FieldLabel htmlFor={key}>{key}</FieldLabel>
+                  <Input
                     id={key}
                     name={key}
                     type="number"
                     defaultValue={Number(value)}
                   />
-                </div>
+                </Field>
               ))}
-              <button className="primary" type="submit">
+              <Button type="submit">
                 Save settings
-              </button>
+              </Button>
+              </FieldGroup>
             </form>
           ) : (
-            <p className="muted">Loading settings...</p>
+            <p className="text-sm text-muted-foreground">Loading settings...</p>
           )}
-        </section>
+          </CardContent>
+        </Card>
       </div>
 
-      <section className="panel" style={{ marginTop: 16 }}>
-        <h2>Recent events</h2>
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Type</th>
-              <th>Points</th>
-              <th>Money</th>
-              <th>Details</th>
-            </tr>
-          </thead>
-          <tbody>
+      <Card>
+        <CardHeader>
+          <CardTitle as="h2">Recent events</CardTitle>
+        </CardHeader>
+        <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Type</TableHead>
+              <TableHead>Points</TableHead>
+              <TableHead>Money</TableHead>
+              <TableHead>Details</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {events?.map((event) => (
-              <tr key={event._id}>
-                <td>{event.type}</td>
-                <td>{event.pointsDelta ?? ""}</td>
-                <td>{event.moneyDelta ?? ""}</td>
-                <td>
-                  <code>{JSON.stringify(event.payload)}</code>
-                </td>
-              </tr>
+              <TableRow key={event._id}>
+                <TableCell>{event.type}</TableCell>
+                <TableCell>{event.pointsDelta ?? ""}</TableCell>
+                <TableCell>{event.moneyDelta ?? ""}</TableCell>
+                <TableCell>
+                  <code className="break-all text-xs">
+                    {JSON.stringify(event.payload)}
+                  </code>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
-      </section>
+          </TableBody>
+        </Table>
+        </CardContent>
+      </Card>
     </main>
   );
 }

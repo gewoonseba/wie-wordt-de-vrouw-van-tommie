@@ -5,6 +5,23 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { api } from "../../../../convex/_generated/api";
 import { generateToken } from "@/lib/tokens";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from "@/components/ui/card";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+
+const LOGIN_TIMEOUT_MS = 8000;
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -20,7 +37,20 @@ export default function AdminLoginPage() {
 
     try {
       const sessionToken = generateToken(40);
-      await login({ passcode, sessionToken });
+      await Promise.race([
+        login({ passcode, sessionToken }),
+        new Promise((_, reject) =>
+          window.setTimeout(
+            () =>
+              reject(
+                new Error(
+                  "Login timed out while connecting to Convex. Refresh the page and confirm the local Convex server is running."
+                )
+              ),
+            LOGIN_TIMEOUT_MS
+          )
+        )
+      ]);
       window.localStorage.setItem("adminToken", sessionToken);
       window.dispatchEvent(new Event("admin-token-change"));
       router.push("/admin");
@@ -32,27 +62,34 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <main className="page narrow">
-      <section className="panel">
-        <p className="eyebrow">Admin login</p>
-        <h1>Enter the host passcode</h1>
+    <main className="mx-auto flex min-h-screen w-full max-w-xl items-center px-4 py-8">
+      <Card className="w-full">
+        <CardHeader>
+          <CardDescription>Admin login</CardDescription>
+          <CardTitle as="h1">Enter the host passcode</CardTitle>
+        </CardHeader>
+        <CardContent>
         <form onSubmit={onSubmit}>
-          <div className="field">
-            <label htmlFor="passcode">Passcode</label>
-            <input
-              id="passcode"
-              type="password"
-              value={passcode}
-              onChange={(event) => setPasscode(event.target.value)}
-              autoFocus
-            />
-          </div>
-          {error ? <p className="error">{error}</p> : null}
-          <button className="primary" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Logging in..." : "Login"}
-          </button>
+          <FieldGroup>
+            <Field data-invalid={!!error}>
+              <FieldLabel htmlFor="passcode">Passcode</FieldLabel>
+              <Input
+                aria-invalid={!!error}
+                id="passcode"
+                type="password"
+                value={passcode}
+                onChange={(event) => setPasscode(event.target.value)}
+                autoFocus
+              />
+              {error ? <FieldError>{error}</FieldError> : null}
+            </Field>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Logging in..." : "Login"}
+            </Button>
+          </FieldGroup>
         </form>
-      </section>
+        </CardContent>
+      </Card>
     </main>
   );
 }

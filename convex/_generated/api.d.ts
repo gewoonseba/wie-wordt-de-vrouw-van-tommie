@@ -11,9 +11,11 @@
 import type * as authTokens from "../authTokens.js";
 import type * as files from "../files.js";
 import type * as participants from "../participants.js";
+import type * as scoreboard from "../scoreboard.js";
 import type * as scoring from "../scoring.js";
 import type * as settings from "../settings.js";
 import type * as teams from "../teams.js";
+import type * as trackerAdmin from "../trackerAdmin.js";
 import type * as viewer from "../viewer.js";
 
 import type {
@@ -26,9 +28,11 @@ declare const fullApi: ApiFromModules<{
   authTokens: typeof authTokens;
   files: typeof files;
   participants: typeof participants;
+  scoreboard: typeof scoreboard;
   scoring: typeof scoring;
   settings: typeof settings;
   teams: typeof teams;
+  trackerAdmin: typeof trackerAdmin;
   viewer: typeof viewer;
 }>;
 

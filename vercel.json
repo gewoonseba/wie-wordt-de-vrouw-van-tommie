@@ -1,5 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "ignoreCommand": "node -e \"process.exit(process.env.VERCEL_ENV === 'preview' && process.env.GITHUB_ACTIONS !== 'true' ? 0 : 1)\"",
-  "buildCommand": "if [ \"$VERCEL_ENV\" = \"preview\" ]; then npx convex deploy --preview-create=\"${GITHUB_HEAD_REF:-$VERCEL_GIT_COMMIT_REF}\" --preview-run seed:preview --cmd-url-env-var-name NEXT_PUBLIC_CONVEX_URL --cmd 'npm run build'; else npx convex deploy --cmd-url-env-var-name NEXT_PUBLIC_CONVEX_URL --cmd 'npm run build'; fi"
+  "buildCommand": "node scripts/vercel-build.mjs"
 }

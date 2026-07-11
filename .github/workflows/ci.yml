@@ -85,6 +85,11 @@ jobs:
           CONVEX_DEPLOY_KEY: ${{ env.CONVEX_PREVIEW_DEPLOY_KEY }}
         run: npx vercel build --token="${VERCEL_TOKEN}"
 
+      - name: Seed Convex preview roster
+        env:
+          CONVEX_DEPLOY_KEY: ${{ env.CONVEX_PREVIEW_DEPLOY_KEY }}
+        run: npx convex run seed:preview
+
       - name: Deploy Vercel preview
         id: deploy
         run: |

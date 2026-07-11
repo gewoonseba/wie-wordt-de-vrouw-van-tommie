@@ -16,12 +16,14 @@ export default defineSchema({
     points: v.number(),
     canDate: v.boolean(),
     currentTeamId: v.optional(v.id("teams")),
+    seedKey: v.optional(v.string()),
     isActive: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number()
   })
     .index("by_active", ["isActive"])
-    .index("by_team", ["currentTeamId"]),
+    .index("by_team", ["currentTeamId"])
+    .index("by_seed_key", ["seedKey"]),
 
   teams: defineTable({
     name: v.string(),

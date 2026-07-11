@@ -2,7 +2,10 @@ import { v } from "convex/values";
 
 import { mutation } from "./_generated/server";
 import { assertAdmin } from "./authTokens";
+import { PARTICIPANT_ROSTER, STARTING_MONEY } from "./seed";
 import { getOrCreateSettings } from "./settings";
+
+const MAX_PARTICIPANTS = 100;
 
 function assertNonZeroInteger(value: number, label: string) {
   if (!Number.isSafeInteger(value) || value === 0) {
@@ -95,5 +98,40 @@ export const adjustMoney = mutation({
     });
 
     return { tommieMoney };
+  }
+});
+
+export const resetToStartingState = mutation({
+  args: { adminToken: v.string() },
+  handler: async (ctx, args) => {
+    await assertAdmin(ctx, args.adminToken);
+    const participants = await ctx.db.query("participants").take(MAX_PARTICIPANTS + 1);
+    if (participants.length > MAX_PARTICIPANTS) {
+      throw new Error(`Reset supports at most ${MAX_PARTICIPANTS} participants.`);
+    }
+
+    const startingState = new Map<string, { points: number; canDate: boolean }>(
+      PARTICIPANT_ROSTER.map((participant) => [participant.seedKey, participant])
+    );
+    const now = Date.now();
+    for (const participant of participants) {
+      const seed = participant.seedKey ? startingState.get(participant.seedKey) : undefined;
+      await ctx.db.patch(participant._id, {
+        points: seed?.points ?? 0,
+        canDate: seed?.canDate ?? false,
+        updatedAt: now
+      });
+    }
+
+    const settings = await getOrCreateSettings(ctx);
+    if (!settings._id) {
+      throw new Error("Settings were not persisted.");
+    }
+    await ctx.db.patch(settings._id, {
+      tommieMoney: STARTING_MONEY,
+      updatedAt: now
+    });
+
+    return { participantCount: participants.length, tommieMoney: STARTING_MONEY };
   }
 });

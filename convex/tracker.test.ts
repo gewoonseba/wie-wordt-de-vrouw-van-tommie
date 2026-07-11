@@ -118,7 +118,109 @@ describe("public scoreboard", () => {
   });
 });
 
+describe("participant roster", () => {
+  it("seeds the preview roster once without duplicating participants", async () => {
+    const t = createTest();
+
+    await expect(t.mutation(api.seed.preview, {})).resolves.toEqual({
+      created: 15,
+      total: 15
+    });
+    await expect(t.mutation(api.seed.preview, {})).resolves.toEqual({
+      created: 0,
+      total: 15
+    });
+
+    const participants = await t.run(async (ctx) =>
+      await ctx.db.query("participants").take(100)
+    );
+    expect(participants).toHaveLength(15);
+    expect(participants).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "Tommie", seedKey: "tommie", isActive: true })
+      ])
+    );
+    const settings = await t.run(async (ctx) =>
+      await ctx.db.query("settings").withIndex("by_key", (q) => q.eq("key", "event")).unique()
+    );
+    expect(settings?.tommieMoney).toBe(1_000);
+  });
+
+  it("lets an admin add and manage roster participants", async () => {
+    const t = createTest();
+    const token = "admin-session";
+    await seedAdminSession(t, token);
+
+    const participantId = await t.mutation(api.participants.create, {
+      adminToken: token,
+      name: "  New person  "
+    });
+    await t.mutation(api.participants.update, {
+      adminToken: token,
+      participantId,
+      name: "Updated person",
+      isActive: false
+    });
+
+    await expect(t.query(api.participants.listForAdmin, { adminToken: token })).resolves.toEqual([
+      expect.objectContaining({
+        _id: participantId,
+        name: "Updated person",
+        isActive: false,
+        photoUrl: null
+      })
+    ]);
+  });
+});
+
 describe("admin tracker mutations", () => {
+  it("restores seeded values and clears custom participant state", async () => {
+    const t = createTest();
+    const token = "admin-session";
+    await seedAdminSession(t, token);
+    await t.mutation(api.seed.preview, {});
+    const customParticipantId = await seedParticipant(t, {
+      name: "Custom participant",
+      points: 42,
+      canDate: true
+    });
+    await t.run(async (ctx) => {
+      const settings = await ctx.db
+        .query("settings")
+        .withIndex("by_key", (q) => q.eq("key", "event"))
+        .unique();
+      if (!settings) {
+        throw new Error("Settings missing from preview seed.");
+      }
+      await ctx.db.patch(settings._id, { tommieMoney: 3_500 });
+      const tommie = await ctx.db
+        .query("participants")
+        .withIndex("by_seed_key", (q) => q.eq("seedKey", "tommie"))
+        .unique();
+      if (!tommie) {
+        throw new Error("Tommie missing from preview seed.");
+      }
+      await ctx.db.patch(tommie._id, { points: 999, canDate: false });
+    });
+
+    await expect(
+      t.mutation(api.trackerAdmin.resetToStartingState, { adminToken: token })
+    ).resolves.toMatchObject({ tommieMoney: 1_000 });
+
+    const result = await t.query(api.scoreboard.get, {});
+    expect(result.tommieMoney).toBe(1_000);
+    expect(result.participants).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "Tommie", points: 80, canDate: true }),
+        expect.objectContaining({
+          _id: customParticipantId,
+          points: 0,
+          canDate: false
+        })
+      ])
+    );
+  });
+
   it("rejects tracker mutations after logout revokes the session", async () => {
     const t = createTest();
     const token = "admin-session";

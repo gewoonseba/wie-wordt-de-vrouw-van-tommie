@@ -40,13 +40,29 @@ to bridge this window.
 If rollback is required, redeploy the compatible backend and frontend together;
 rolling back only Vercel leaves the old frontend calling removed Convex APIs.
 Pull-request previews do not share this production risk because each preview
-uses its isolated Convex deployment.
+uses its isolated Convex deployment. The Vercel build command invokes Convex
+with `--preview-run seed:preview`; Convex runs that mutation only when it
+provisions a new preview, automatically adding the starter roster without
+affecting production.
 
 During the coordinated rollout, deploy the backend with:
 
 ```bash
 npm run convex:deploy
 ```
+
+Then seed the initial participant roster and its portraits:
+
+```bash
+npm run seed:participants
+```
+
+The script requests the production admin passcode and uploads the 15 PNG files
+from the supplied Google Drive sticker folder to Convex storage. It uses stable
+roster keys, then sets the documented start state: €1,000 in Tommie’s pot,
+seeded individual scores, and date eligibility for Tommie, Seba, and Chiel.
+Set `PARTICIPANT_PHOTO_DIR` when running it from a machine where the source
+folder has a different path.
 
 ## 3. Configure Vercel
 
@@ -56,7 +72,7 @@ Use these project settings:
 |---|---|
 | Framework Preset | Next.js |
 | Install Command | `npm install` |
-| Build Command | `npx convex deploy --cmd-url-env-var-name NEXT_PUBLIC_CONVEX_URL --cmd 'npm run build'` |
+| Build Command | `npx convex deploy --preview-run seed:preview --cmd-url-env-var-name NEXT_PUBLIC_CONVEX_URL --cmd 'npm run build'` |
 | Output Directory | `.next` |
 
 Add the matching `CONVEX_DEPLOY_KEY` to Vercel’s Production and Preview

@@ -20,7 +20,3 @@ export function hashToken(token: string): string {
 
   return (hash >>> 0).toString(16).padStart(8, "0");
 }
-
-export function createParticipantUrl(baseUrl: string, token: string): string {
-  return `${baseUrl.replace(/\/$/, "")}/p/${encodeURIComponent(token)}`;
-}

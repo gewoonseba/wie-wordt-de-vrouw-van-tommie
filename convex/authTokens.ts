@@ -22,22 +22,6 @@ export async function assertAdmin(
   return session;
 }
 
-export async function participantIdForToken(
-  ctx: QueryCtx | MutationCtx,
-  token: string
-) {
-  const tokenRecord = await ctx.db
-    .query("participantTokens")
-    .withIndex("by_hash", (q) => q.eq("tokenHash", hashToken(token)))
-    .unique();
-
-  if (!tokenRecord || tokenRecord.revokedAt) {
-    return null;
-  }
-
-  return tokenRecord.participantId;
-}
-
 export const login = mutation({
   args: {
     passcode: v.string(),
@@ -72,55 +56,5 @@ export const logout = mutation({
   handler: async (ctx, args) => {
     const session = await assertAdmin(ctx, args.adminToken);
     await ctx.db.patch(session._id, { revokedAt: Date.now() });
-  }
-});
-
-export const createParticipantToken = mutation({
-  args: {
-    adminToken: v.string(),
-    participantId: v.id("participants"),
-    rawToken: v.string()
-  },
-  handler: async (ctx, args) => {
-    await assertAdmin(ctx, args.adminToken);
-
-    const now = Date.now();
-    const existing = await ctx.db
-      .query("participantTokens")
-      .withIndex("by_participant", (q) => q.eq("participantId", args.participantId))
-      .collect();
-
-    for (const token of existing) {
-      if (!token.revokedAt) {
-        await ctx.db.patch(token._id, { revokedAt: now });
-      }
-    }
-
-    await ctx.db.insert("participantTokens", {
-      participantId: args.participantId,
-      tokenHash: hashToken(args.rawToken),
-      createdAt: now
-    });
-  }
-});
-
-export const revokeParticipantTokens = mutation({
-  args: {
-    adminToken: v.string(),
-    participantId: v.id("participants")
-  },
-  handler: async (ctx, args) => {
-    await assertAdmin(ctx, args.adminToken);
-    const now = Date.now();
-    const tokens = await ctx.db
-      .query("participantTokens")
-      .withIndex("by_participant", (q) => q.eq("participantId", args.participantId))
-      .collect();
-
-    for (const token of tokens) {
-      if (!token.revokedAt) {
-        await ctx.db.patch(token._id, { revokedAt: now });
-      }
-    }
   }
 });

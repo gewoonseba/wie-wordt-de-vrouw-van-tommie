@@ -1,15 +1,26 @@
-# Tommie Bachelor Tracker
+# Tommie Scoreboard
 
-Realtime tracker for the bachelor party game described in `spel-tracking-spec.md`.
+Realtime public scoreboard for the “Wie wordt de vrouw van Tommie?” bachelor
+party. Quiz scoring and physical card draws happen outside the app.
+
+## What the app does
+
+- `/` shows the live podium, complete ranking, date eligibility, and Tommie’s pot.
+- `/admin` lets a logged-in host add signed score adjustments, set date
+  eligibility, and add signed money adjustments.
+- Existing `/p/<token>` links redirect to the public scoreboard. Participant
+  tokens are no longer read or generated.
+
+The event roster and participant photos must already exist in Convex. The app
+does not provide participant, photo, team, card, quiz, or payout management.
 
 ## Stack
 
 - Next.js App Router frontend
 - Convex realtime database, functions, and file storage
 - Vercel hosting
-- QR-token participant access without participant accounts
 
-## Setup
+## Local setup
 
 1. Install dependencies:
 
@@ -23,29 +34,20 @@ Realtime tracker for the bachelor party game described in `spel-tracking-spec.md
    cp .env.example .env.local
    ```
 
-3. Start the local app:
+3. Start Convex and Next.js:
 
    ```bash
    npm run dev:all
    ```
 
-4. Open `http://localhost:3000/admin/login`.
+4. Open `http://localhost:3000` for the scoreboard or
+   `http://localhost:3000/admin/login` for host controls.
 
-`npm run dev:all` starts Convex, runs Next.js, and keeps both services behind
-`localhost:3000` so local browser previews can connect to Convex through the same
-origin.
+`npm run dev:all` keeps the local frontend and Convex backend behind
+`localhost:3000` so browser previews can use the same origin.
 
-The default development admin passcode is `tommie-admin`. Set `ADMIN_PASSCODE`
-in Convex environment variables before using the app for the actual event.
-
-## Core Workflows
-
-- Create participants under `/admin/participants`.
-- Upload pictures for participants.
-- Generate a QR code for each participant and let them scan it.
-- Create teams and assign players before quiz or mini-game rounds.
-- Use `/admin/scoring` to enter physical card draws, dates, quiz rewards,
-  mini-game rewards, and Tommie money events.
+The default development admin passcode is `tommie-admin`. Set a strong
+`ADMIN_PASSCODE` in the Convex production environment before the event.
 
 ## Verification
 
@@ -53,22 +55,21 @@ in Convex environment variables before using the app for the actual event.
 npm run verify
 ```
 
-## Dependency Versions
-
 Dependencies are pinned to exact versions. Keep `.npmrc` set to
-`save-exact=true` so future `npm install <package>` commands do not add version
-ranges.
+`save-exact=true` when adding packages.
 
 ## Production
 
-Host the backend on Convex and the frontend on Vercel. The full checklist is in
-[`docs/operations/production-deployment.md`](docs/operations/production-deployment.md).
-
-Required production values:
+Host the backend on Convex and the frontend on Vercel. See
+[`docs/operations/production-deployment.md`](docs/operations/production-deployment.md)
+for the deployment checklist.
 
 | Platform | Variable | Notes |
 |---|---|---|
-| Vercel | `NEXT_PUBLIC_CONVEX_URL` | Production Convex URL, for example `https://example.convex.cloud`. |
-| Vercel | `NEXT_PUBLIC_APP_URL` | Final Vercel production URL, used for participant QR links. |
+| Vercel | `NEXT_PUBLIC_CONVEX_URL` | Production Convex URL; the deploy command supplies it automatically. |
 | Convex | `ADMIN_PASSCODE` | Strong event admin passcode. Do not use the development default. |
 | Convex | `ADMIN_SESSION_TTL_HOURS` | Optional admin session lifetime. Defaults to `12`. |
+
+Legacy Convex tables and fields remain in the schema for data compatibility.
+Do not remove them until a backup has been created and its restore has been
+verified.

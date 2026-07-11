@@ -2,9 +2,18 @@
 
 import { useQuery } from "convex/react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+
 import { api } from "../../../convex/_generated/api";
 import { AdminNav } from "@/components/admin/AdminNav";
-import { useAdminToken } from "@/components/admin/useAdminToken";
+import { DateEligibilityControl } from "@/components/admin/DateEligibilityControl";
+import { MoneyAdjustmentForm } from "@/components/admin/MoneyAdjustmentForm";
+import { ScoreAdjustmentForm } from "@/components/admin/ScoreAdjustmentForm";
+import {
+  clearAdminToken,
+  useAdminToken
+} from "@/components/admin/useAdminToken";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,30 +23,17 @@ import {
   CardHeader,
   CardTitle
 } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from "@/components/ui/table";
+import { getInitials } from "@/lib/text";
 
 export default function AdminDashboardPage() {
   const adminToken = useAdminToken();
-  const participants = useQuery(
-    api.participants.list,
-    adminToken ? { adminToken } : "skip"
-  );
-  const settings = useQuery(
-    api.settings.getAdmin,
-    adminToken ? { adminToken } : "skip"
-  );
-  const pendingDraws = useQuery(
-    api.scoring.listPendingDraws,
-    adminToken ? { adminToken } : "skip"
-  );
+  const router = useRouter();
+  const scoreboard = useQuery(api.scoreboard.get, adminToken ? {} : "skip");
+
+  function onSessionExpired() {
+    clearAdminToken();
+    router.replace("/admin/login");
+  }
 
   if (!adminToken) {
     return (
@@ -45,7 +41,9 @@ export default function AdminDashboardPage() {
         <Card className="w-full">
           <CardHeader>
             <CardTitle as="h1">Admin login required</CardTitle>
-            <CardDescription>Login to manage the tracker.</CardDescription>
+            <CardDescription>
+              Log in to update scores, date eligibility, and Tommie&apos;s pot.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Button nativeButton={false} render={<Link href="/admin/login" />}>
@@ -57,84 +55,99 @@ export default function AdminDashboardPage() {
     );
   }
 
-  const leaderboard = [...(participants ?? [])].sort(
-    (a, b) => b.points - a.points
-  );
-  const money = settings?.tommieMoney ?? 0;
-  const target = settings?.tommieTarget ?? 10000;
-  const progress = Math.min(100, Math.round((money / target) * 100));
-
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
+    <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
       <AdminNav />
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle as="h2">Tommie honeymoon money</CardTitle>
-            <CardDescription>
-              Target: EUR {target.toLocaleString("nl-BE")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            <div className="text-3xl font-semibold tracking-tight">
-              EUR {money.toLocaleString("nl-BE")}
-            </div>
-            <Progress aria-label={`${progress}%`} value={progress} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle as="h2">Pending physical draws</CardTitle>
-            <CardDescription>Resolve these from the scoring screen.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-semibold tracking-tight">
-              {pendingDraws?.length ?? 0}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle as="h2">Date-ready players</CardTitle>
-            <CardDescription>Players currently allowed to start a date.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-semibold tracking-tight">
-            {participants?.filter((participant) => participant.canDate).length ?? 0}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
 
       <Card>
         <CardHeader>
-          <CardTitle as="h2">Leaderboard</CardTitle>
+          <CardTitle as="h2">Tommie&apos;s pot</CardTitle>
+          <CardDescription>
+            Add newly earned money or enter a negative correction.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Player</TableHead>
-                <TableHead>Points</TableHead>
-                <TableHead>Date</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {leaderboard.map((participant) => (
-                <TableRow key={participant._id}>
-                  <TableCell className="font-medium">{participant.name}</TableCell>
-                  <TableCell>{participant.points}</TableCell>
-                  <TableCell>
-                    <Badge variant={participant.canDate ? "default" : "secondary"}>
-                      {participant.canDate ? "Can date" : "Spent"}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          {scoreboard ? (
+            <MoneyAdjustmentForm
+              adminToken={adminToken}
+              currentTotal={scoreboard.tommieMoney}
+              onSessionExpired={onSessionExpired}
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">Loading current total…</p>
+          )}
         </CardContent>
       </Card>
+
+      <section aria-labelledby="participant-controls" className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-xl font-semibold tracking-tight" id="participant-controls">
+            Participants
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Enter signed score adjustments and set the exact date status.
+          </p>
+        </div>
+
+        {!scoreboard ? (
+          <Card>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">Loading participants…</p>
+            </CardContent>
+          </Card>
+        ) : scoreboard.participants.length === 0 ? (
+          <Card>
+            <CardHeader>
+              <CardTitle as="h3">No active participants</CardTitle>
+              <CardDescription>
+                Prepare the event roster in Convex before using this control room.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {scoreboard.participants.map((participant) => (
+              <Card key={participant._id}>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <Avatar size="lg">
+                      {participant.photoUrl ? (
+                        <AvatarImage alt="" src={participant.photoUrl} />
+                      ) : null}
+                      <AvatarFallback>{getInitials(participant.name)}</AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <CardTitle as="h3" className="truncate">
+                        {participant.name}
+                      </CardTitle>
+                      <CardDescription>{participant.points} points</CardDescription>
+                    </div>
+                    <Badge variant={participant.canDate ? "default" : "secondary"}>
+                      {participant.canDate ? "Date allowed" : "No date"}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,0.7fr)]">
+                  <ScoreAdjustmentForm
+                    adminToken={adminToken}
+                    currentScore={participant.points}
+                    onSessionExpired={onSessionExpired}
+                    participantId={participant._id}
+                    participantName={participant.name}
+                  />
+                  <DateEligibilityControl
+                    adminToken={adminToken}
+                    canDate={participant.canDate}
+                    onSessionExpired={onSessionExpired}
+                    participantId={participant._id}
+                    participantName={participant.name}
+                  />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
     </main>
   );
 }

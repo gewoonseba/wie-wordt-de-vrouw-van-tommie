@@ -1,51 +1,39 @@
 # Event Runbook
 
-## Before the Party
+## Before the party
 
-1. Deploy Convex and Vercel using `docs/operations/production-deployment.md`.
-2. Set production environment variables in Convex and Vercel.
-3. Login as admin.
-4. Create every participant.
-5. Upload participant pictures.
-6. Generate QR codes for participants.
-7. Create the teams for the first activity.
-8. Test one participant QR code on a phone.
+1. Deploy Convex and Vercel using
+   `docs/operations/production-deployment.md`.
+2. Set the production `ADMIN_PASSCODE` in Convex.
+3. Confirm the intended participant records are active and their names and
+   stored photos are correct. Roster and photo maintenance happens outside the
+   event UI, through the Convex Dashboard when needed.
+4. Open `/` on a phone and a shared display. Confirm the podium, full ranking,
+   date states, and Tommie’s exact pot render correctly.
+5. Open `/admin/login`, log in, and confirm the control room lists every active
+   participant.
 
-## During the Party
+## During the party
 
-Use `/admin/scoring` for all live entry.
+Use `/admin` for all live entry:
 
-For physical card draws:
+- Enter a positive score adjustment when a participant earns points.
+- Enter a negative score adjustment to correct a mistake. The result cannot go
+  below zero.
+- Set the participant’s exact date status to “Date allowed” or “No date.”
+- Enter positive or negative money adjustments for Tommie’s pot. The result
+  cannot go below zero.
 
-1. Select a pending draw or choose a participant manually.
-2. Enter the physical card ranks.
-3. Save the draw.
-4. Confirm points and date eligibility update on the viewer page.
+After each action, confirm `/` updates without a refresh. Quiz scoring, physical
+cards, and decisions about rewards remain outside the app.
 
-For dates:
+## If something goes wrong
 
-1. Select a player with `canDate = true`.
-2. Select the date task.
-3. Start the date. This consumes the player's date flag.
-4. Mark success or failure.
-5. On success, resolve the generated 3-card pending draw after the player
-   physically draws cards.
-
-For quiz rounds:
-
-1. Enter team scores.
-2. Save quiz rewards.
-3. Resolve each generated card draw after physical cards are drawn.
-
-For mini-games:
-
-1. Enter card rewards per team.
-2. Save mini-game rewards.
-3. Resolve each generated card draw after physical cards are drawn.
-
-## If Something Goes Wrong
-
-- Use manual card draw entries for missed obligations.
-- Use the participant page to manually reset a player's `canDate` flag.
-- Add a Tommie money manual adjustment for missed payouts.
-- Keep notes in money events so corrections are understandable later.
+- A rejected adjustment remains in its form so it can be corrected and retried.
+- If the admin session expires, log in again and resubmit the adjustment.
+- If the participant list is empty or incomplete, correct the retained records
+  in the Convex Dashboard before continuing.
+- Old participant QR links should redirect to `/`; they do not authorize a
+  personalized view.
+- Do not delete legacy Convex tables or fields during the event. Physical schema
+  cleanup remains deferred until a backup restore has been verified.

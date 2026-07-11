@@ -4,6 +4,7 @@ import { useMutation } from "convex/react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { api } from "../../../../convex/_generated/api";
+import { setAdminToken } from "@/components/admin/useAdminToken";
 import { generateToken } from "@/lib/tokens";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,8 +52,7 @@ export default function AdminLoginPage() {
           )
         )
       ]);
-      window.localStorage.setItem("adminToken", sessionToken);
-      window.dispatchEvent(new Event("admin-token-change"));
+      setAdminToken(sessionToken);
       router.push("/admin");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Login failed.");

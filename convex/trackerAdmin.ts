@@ -13,6 +13,12 @@ function assertNonZeroInteger(value: number, label: string) {
   }
 }
 
+function assertCardPoints(value: number) {
+  if (!Number.isSafeInteger(value) || value < 2 || value > 10) {
+    throw new Error("Card points must be an integer between 2 and 10.");
+  }
+}
+
 export const adjustScore = mutation({
   args: {
     adminToken: v.string(),
@@ -42,6 +48,36 @@ export const adjustScore = mutation({
     });
 
     return { points };
+  }
+});
+
+export const playCard = mutation({
+  args: {
+    adminToken: v.string(),
+    participantId: v.id("participants"),
+    points: v.number()
+  },
+  handler: async (ctx, args) => {
+    await assertAdmin(ctx, args.adminToken);
+    assertCardPoints(args.points);
+
+    const participant = await ctx.db.get(args.participantId);
+    if (!participant) {
+      throw new Error("Participant not found.");
+    }
+
+    const points = participant.points + args.points;
+    if (!Number.isSafeInteger(points)) {
+      throw new Error("Score total must be a safe integer.");
+    }
+
+    await ctx.db.patch(participant._id, {
+      points,
+      canDate: true,
+      updatedAt: Date.now()
+    });
+
+    return { points, canDate: true };
   }
 });
 

@@ -1,4 +1,4 @@
-import type { MutationCtx, QueryCtx } from "./_generated/server";
+import { query, type MutationCtx, type QueryCtx } from "./_generated/server";
 
 const SETTINGS_KEY = "event";
 
@@ -46,3 +46,11 @@ export async function getOrCreateSettings(ctx: QueryCtx | MutationCtx) {
   }
   return created;
 }
+
+export const getTommieMoney = query({
+  args: {},
+  handler: async (ctx) => {
+    const settings = await getOrCreateSettings(ctx);
+    return { tommieMoney: settings.tommieMoney };
+  }
+});

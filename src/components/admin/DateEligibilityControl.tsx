@@ -12,6 +12,8 @@ import { isAdminSessionExpired } from "@/lib/admin-session";
 type DateEligibilityControlProps = {
   adminToken: string;
   canDate: boolean;
+  disabled?: boolean;
+  onPendingChange?: (pending: boolean) => void;
   onSessionExpired: () => void;
   participantId: Id<"participants">;
   participantName: string;
@@ -20,23 +22,23 @@ type DateEligibilityControlProps = {
 export function DateEligibilityControl({
   adminToken,
   canDate,
+  disabled = false,
+  onPendingChange,
   onSessionExpired,
   participantId,
   participantName
 }: DateEligibilityControlProps) {
   const setDateEligibility = useMutation(api.trackerAdmin.setDateEligibility);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [isSubmitting, setSubmitting] = useState(false);
 
   async function save(desiredState: boolean) {
     if (isSubmitting) return;
     setError("");
-    setSuccess("");
     setSubmitting(true);
+    onPendingChange?.(true);
     try {
       await setDateEligibility({ adminToken, participantId, canDate: desiredState });
-      setSuccess(desiredState ? "Saved: date allowed." : "Saved: no date allowed.");
     } catch (caught) {
       if (isAdminSessionExpired(caught)) {
         onSessionExpired();
@@ -46,15 +48,18 @@ export function DateEligibilityControl({
       setError(message);
     } finally {
       setSubmitting(false);
+      onPendingChange?.(false);
     }
   }
 
+  const isDisabled = disabled || isSubmitting;
+
   return (
-    <Field data-disabled={isSubmitting} data-invalid={!!error} orientation="horizontal">
+    <Field data-disabled={isDisabled} data-invalid={!!error} orientation="horizontal">
       <Checkbox
         aria-invalid={!!error}
         checked={canDate}
-        disabled={isSubmitting}
+        disabled={isDisabled}
         id={`date-${participantId}`}
         onCheckedChange={(checked) => void save(checked)}
       />
@@ -65,7 +70,6 @@ export function DateEligibilityControl({
           {isSubmitting ? " Saving…" : ""}
         </FieldDescription>
         {error ? <FieldError>{error}</FieldError> : null}
-        {success ? <p aria-live="polite" className="text-sm text-muted-foreground">{success}</p> : null}
       </FieldContent>
     </Field>
   );

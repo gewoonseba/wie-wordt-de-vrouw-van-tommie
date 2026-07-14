@@ -96,6 +96,42 @@ describe("public scoreboard", () => {
     });
   });
 
+  it("returns the current money without loading participant state", async () => {
+    const t = createTest();
+    await t.run(async (ctx) => {
+      const now = Date.now();
+      for (let index = 0; index < 101; index += 1) {
+        await ctx.db.insert("participants", {
+          name: `Participant ${index}`,
+          points: index,
+          canDate: true,
+          isActive: true,
+          createdAt: now + index,
+          updatedAt: now + index
+        });
+      }
+      await ctx.db.insert("settings", {
+        key: "event",
+        tommieTarget: 10_000,
+        tommieMoney: 1_500,
+        defaultPayouts: DEFAULT_PAYOUTS,
+        updatedAt: Date.now()
+      });
+    });
+
+    await expect(t.query(api.settings.getTommieMoney, {})).resolves.toEqual({
+      tommieMoney: 1_500
+    });
+  });
+
+  it("returns zero money when the focused money settings do not exist", async () => {
+    const t = createTest();
+
+    await expect(t.query(api.settings.getTommieMoney, {})).resolves.toEqual({
+      tommieMoney: 0
+    });
+  });
+
   it("rejects a roster larger than 100 instead of truncating it", async () => {
     const t = createTest();
     await t.run(async (ctx) => {
@@ -245,6 +281,13 @@ describe("admin tracker mutations", () => {
         delta: 1
       })
     ).rejects.toThrow("Admin session is missing or expired.");
+    await expect(
+      t.mutation(api.trackerAdmin.playCard, {
+        adminToken: token,
+        participantId,
+        points: 10
+      })
+    ).rejects.toThrow("Admin session is missing or expired.");
   });
 
   it("applies signed score deltas transactionally", async () => {
@@ -267,6 +310,39 @@ describe("admin tracker mutations", () => {
         delta: -3
       })
     ).resolves.toEqual({ points: 12 });
+  });
+
+  it("plays a card and restores date eligibility in one transaction", async () => {
+    const t = createTest();
+    const token = "admin-session";
+    const participantId = await seedParticipant(t, { points: 10, canDate: false });
+    await seedAdminSession(t, token);
+
+    await expect(
+      t.mutation(api.trackerAdmin.playCard, {
+        adminToken: token,
+        participantId,
+        points: 10
+      })
+    ).resolves.toEqual({ points: 20, canDate: true });
+
+    const participant = await t.run(async (ctx) => ctx.db.get(participantId));
+    expect(participant).toMatchObject({ points: 20, canDate: true });
+  });
+
+  it.each([0, 1.5, -1, 11])("rejects invalid card points %s", async (points) => {
+    const t = createTest();
+    const token = "admin-session";
+    const participantId = await seedParticipant(t);
+    await seedAdminSession(t, token);
+
+    await expect(
+      t.mutation(api.trackerAdmin.playCard, {
+        adminToken: token,
+        participantId,
+        points
+      })
+    ).rejects.toThrow("Card points must be an integer between 2 and 10.");
   });
 
   it.each([0, 1.5, Number.NaN, Number.POSITIVE_INFINITY])(

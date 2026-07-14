@@ -1,67 +1,58 @@
+import type { CSSProperties } from "react";
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from "@/components/ui/card";
 import type { ScoreboardParticipant } from "@/lib/scoreboard";
 import { getInitials } from "@/lib/text";
 
+const ROW_COLORS = ["#ff2ca4", "#43e9ff", "#a8ff19", "#ff8b19", "#be5cff"];
+
 export function RankingList({ participants }: { participants: ScoreboardParticipant[] }) {
+  const maxPoints = Math.max(1, ...participants.map((participant) => participant.points));
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle as="h2" className="text-2xl">
-          Volledige stand
-        </CardTitle>
-        <CardDescription>
-          Iedereen, in dezelfde volgorde als het podium.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {participants.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Er zijn nog geen actieve deelnemers.
-          </p>
-        ) : (
-          <ol className="flex flex-col gap-2">
-            {participants.map((participant, index) => (
+    <section className="crt-ranking-window">
+      <div className="crt-window-title crt-window-title-grid">
+        <h2>Volledige stand</h2>
+        <span>NAME</span><span>LOVE POWER</span><span>STATUS</span><span>SCORE</span>
+      </div>
+
+      {participants.length === 0 ? (
+        <div className="crt-ranking-empty">Er zijn nog geen actieve deelnemers.</div>
+      ) : (
+        <ol className="crt-ranking-list">
+          {participants.map((participant, index) => {
+            const meter = Math.max(4, (participant.points / maxPoints) * 100);
+            const rowStyle = {
+              "--row-color": ROW_COLORS[index % ROW_COLORS.length],
+              "--meter": `${meter}%`
+            } as CSSProperties;
+
+            return (
               <li
-                key={participant._id}
-                className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl bg-muted p-3 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]"
+                key={`${participant._id}-${participant.points}-${participant.canDate}`}
+                className="crt-ranking-row"
+                style={rowStyle}
               >
-                <span className="w-7 text-center text-sm font-semibold text-muted-foreground">
-                  {index + 1}
-                </span>
-                <div className="flex min-w-0 items-center gap-3">
-                  <Avatar size="lg">
-                    {participant.photoUrl ? (
-                      <AvatarImage src={participant.photoUrl} alt="" />
-                    ) : null}
+                <span className="crt-rank-number">{String(index + 1).padStart(2, "0")}</span>
+                <div className="crt-ranking-name">
+                  <Avatar className="crt-ranking-avatar">
+                    {participant.photoUrl ? <AvatarImage src={participant.photoUrl} alt="" /> : null}
                     <AvatarFallback>{getInitials(participant.name)}</AvatarFallback>
                   </Avatar>
-                  <span className="truncate font-medium">{participant.name}</span>
+                  <strong>{participant.name}</strong>
                 </div>
-                <Badge
-                  className="col-span-2 col-start-2 justify-self-start sm:col-span-1 sm:col-start-auto"
-                  variant={participant.canDate ? "default" : "secondary"}
-                >
+                <div className="crt-power-meter" aria-hidden="true"><span /></div>
+                <span className={participant.canDate ? "crt-date-badge is-hot" : "crt-date-badge"}>
                   {participant.canDate ? "Mag op date" : "Geen date"}
-                </Badge>
-                <p className="col-start-3 row-start-1 text-right text-lg font-semibold sm:col-start-auto sm:row-start-auto">
-                  {participant.points}
-                  <span className="ml-1 text-xs font-medium text-muted-foreground">
-                    pt
-                  </span>
+                </span>
+                <p className="crt-points">
+                  {participant.points}<small>PT</small>
                 </p>
               </li>
-            ))}
-          </ol>
-        )}
-      </CardContent>
-    </Card>
+            );
+          })}
+        </ol>
+      )}
+    </section>
   );
 }

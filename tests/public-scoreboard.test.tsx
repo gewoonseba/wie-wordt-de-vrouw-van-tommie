@@ -42,6 +42,11 @@ describe("ScoreboardClient", () => {
     expect(screen.getAllByText("Lisa")).toHaveLength(2);
     expect(screen.getAllByText("Mag op date").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Geen date").length).toBeGreaterThan(0);
+    expect(screen.getByText("ACTIVATED")).toBeTruthy();
+    expect(document.querySelector(".crt-toggle")?.classList.contains("is-active")).toBe(true);
+    expect(document.querySelector(".crt-date-count")?.textContent).toContain(
+      "2 DATE SIGNALS"
+    );
     expect(screen.getByText(/€.*1\.500/)).toBeTruthy();
 
     queryResult = {
@@ -65,6 +70,11 @@ describe("ScoreboardClient", () => {
     expect(screen.getByRole("heading", { name: "Het podium staat klaar" })).toBeTruthy();
     expect(screen.getByText("Er zijn nog geen actieve deelnemers.")).toBeTruthy();
     expect(screen.getByText("De pot is nog leeg.")).toBeTruthy();
+    expect(screen.getByText("STANDBY")).toBeTruthy();
+    expect(document.querySelector(".crt-toggle")?.classList.contains("is-active")).toBe(false);
+    expect(document.querySelector(".crt-date-count")?.textContent).toContain(
+      "0 DATE SIGNALS"
+    );
   });
 });
 

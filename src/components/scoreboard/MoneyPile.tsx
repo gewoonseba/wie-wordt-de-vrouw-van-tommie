@@ -1,15 +1,11 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from "@/components/ui/card";
+import type { CSSProperties } from "react";
+
 import {
   formatEuro,
   getMoneyPileLayerCount,
   MAX_MONEY_PILE_LAYERS
 } from "@/lib/scoreboard";
+import { WindowControls } from "@/components/scoreboard/WindowControls";
 
 function getPileDescription(layerCount: number) {
   if (layerCount === 0) return "De pot is nog leeg.";
@@ -24,40 +20,32 @@ export function MoneyPile({ amount }: { amount: number }) {
   const layers = Array.from({ length: layerCount }, (_, index) => index);
 
   return (
-    <Card className="h-full">
-      <CardHeader className="text-center">
-        <CardDescription>Door Tommie verdiend</CardDescription>
-        <CardTitle as="h2" className="text-2xl">
-          Tommie&apos;s pot
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col items-center gap-5">
-        <output
-          className="font-heading text-4xl font-semibold tracking-tight sm:text-5xl"
-          aria-live="polite"
-        >
+    <section className="crt-money-window">
+      <div className="crt-window-title crt-window-title-money">
+        <span>💰 TOMMIE&apos;S POT</span>
+        <WindowControls />
+      </div>
+      <div className="crt-money-content">
+        <p>DOOR TOMMIE VERDIEND</p>
+        <output key={amount} className="crt-money-amount">
           {formatEuro(amount)}
         </output>
 
-        <div className="flex min-h-40 w-full max-w-sm flex-col justify-end" aria-hidden="true">
+        <div className="crt-money-pile" aria-hidden="true">
+          <span className="crt-money-sunburst" />
           {layerCount === 0 ? (
-            <div className="mx-auto h-2 w-32 rounded-full bg-muted" />
+            <span className="crt-empty-pile">EMPTY</span>
           ) : (
-            <div className="grid grid-cols-5 items-end gap-1 px-4">
+            <div className="crt-cash-stack">
               {layers.map((layer) => (
-                <span
-                  key={layer}
-                  className="h-5 rounded-full bg-primary shadow-sm ring-1 ring-primary-foreground/20 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-reduce:animate-none"
-                />
+                <i key={layer} style={{ "--layer": layer } as CSSProperties}>€</i>
               ))}
             </div>
           )}
         </div>
 
-        <p className="text-center text-sm text-muted-foreground">
-          {getPileDescription(layerCount)}
-        </p>
-      </CardContent>
-    </Card>
+        <p className="crt-money-description">{getPileDescription(layerCount)}</p>
+      </div>
+    </section>
   );
 }

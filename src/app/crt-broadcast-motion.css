@@ -1,0 +1,55 @@
+@keyframes crt-laser-pulse { to { opacity: .5; filter: hue-rotate(70deg); } }
+@keyframes crt-float { to { translate: 0 10px; rotate: 5deg; } }
+@keyframes crt-star { 50% { opacity: .25; transform: scale(.75) rotate(35deg); } }
+@keyframes crt-spin { to { transform: rotate(360deg); } }
+@keyframes crt-score-pop { 40% { transform: scale(1.13); filter: brightness(1.8); } }
+@keyframes crt-equalizer { to { transform: scaleY(.58); opacity: .7; } }
+@keyframes crt-podium-enter { from { transform: translateY(70px); opacity: 0; } }
+@keyframes crt-row-in { from { transform: translateX(35px); opacity: 0; } }
+@keyframes crt-heartbeat { 50% { transform: scale(1.12); filter: brightness(1.6); } }
+@keyframes crt-radar { to { transform: rotate(360deg); } }
+@keyframes crt-loading { to { width: 94%; } }
+
+@media (max-width: 1120px) {
+  .crt-dashboard { grid-template-columns: minmax(170px, .7fr) minmax(480px, 2.2fr); }
+  .crt-right-column { grid-column: 1; grid-row: 2; }
+  .crt-main-column { grid-column: 2; grid-row: 1 / span 2; }
+  .crt-command-pad { grid-template-columns: repeat(3, 1fr); }
+  .crt-cupid, .crt-unicorn { opacity: .72; }
+}
+
+@media (max-width: 760px) {
+  .crt-broadcast { padding: 0; }
+  .crt-cabinet { padding: 9px 9px 50px; border-radius: 12px; }
+  .crt-cabinet::before, .crt-cabinet::after { display: none; }
+  .crt-glass { min-height: 100svh; border-width: 7px; border-radius: 18px; }
+  .crt-program { padding: 14px 8px 56px; }
+  .crt-desktop-bar { font-size: 8px; }
+  .crt-window-controls i { width: 18px; height: 17px; }
+  .crt-cupid, .crt-unicorn { top: 77px; font-size: 43px; }
+  .crt-logo { flex-direction: column; gap: 0; align-items: center; font-size: clamp(50px, 18vw, 82px); line-height: .77; }
+  .crt-kicker { font-size: 7px; }
+  .crt-hero { min-height: 174px; }
+  .crt-telemetry-strip { margin-top: 14px; font-size: 10px; }
+  .crt-dashboard { display: flex; flex-direction: column; }
+  .crt-main-column { order: 1; width: 100%; }
+  .crt-left-column { order: 2; display: grid; width: 100%; grid-template-columns: 1fr .55fr; }
+  .crt-right-column { order: 3; display: grid; width: 100%; grid-template-columns: 1fr 1fr; }
+  .crt-podium { min-height: 255px; padding-inline: 5px; }
+  .crt-podium-nameplate { flex-direction: column; gap: 0; font-size: 8px; }
+  .crt-podium-step span { display: none; }
+  .crt-podium-step { height: 55px; }
+  .crt-podium-rank-1 .crt-podium-step { height: 76px; }
+  .crt-window-title-grid { display: none; }
+  .crt-ranking-row { grid-template-columns: 28px minmax(95px, 1fr) minmax(70px, .8fr) 48px; gap: 5px; }
+  .crt-ranking-row .crt-date-badge { display: none; }
+  .crt-ranking-name { font-size: 10px; }
+  .crt-ranking-avatar { display: none; }
+  .crt-money-amount { font-size: 30px; }
+  .crt-taskbar > span:nth-of-type(n+4) { display: none; }
+  .crt-taskbar > i { font-size: 0; }
+  .crt-taskbar > i::after { content: "● LIVE"; font-size: 9px; }
+  .crt-hardware { left: 24px; right: 24px; font-size: 8px; }
+  .crt-status { min-height: calc(100svh - 32px); padding: 12px; }
+  .crt-status-content { flex-direction: column; text-align: center; }
+}

@@ -4,11 +4,40 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 import { useQuery } from "convex/react";
 
 import { api } from "../../../convex/_generated/api";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CrtShaderOverlay } from "@/components/scoreboard/CrtShaderOverlay";
 import { MoneyPile } from "@/components/scoreboard/MoneyPile";
 import { Podium } from "@/components/scoreboard/Podium";
 import { RankingList } from "@/components/scoreboard/RankingList";
+import { WindowControls } from "@/components/scoreboard/WindowControls";
 import { rankParticipants, selectPodium } from "@/lib/scoreboard";
+
+function BroadcastFrame({ children }: { children: ReactNode }) {
+  return (
+    <main className="crt-broadcast">
+      <div className="crt-cabinet">
+        <div className="crt-glass">
+          <div className="crt-desktop-bar" aria-hidden="true">
+            <span className="crt-app-icon">💘</span>
+            <span>TOMMIE.EXE — LIVE SATELLITE FEED</span>
+            <WindowControls />
+          </div>
+          {children}
+          <CrtShaderOverlay />
+          <div className="crt-glass-glare" aria-hidden="true" />
+        </div>
+
+        <div className="crt-hardware" aria-hidden="true">
+          <div>LOVE•VISION 2000</div>
+          <div className="crt-hardware-lights">
+            <span />
+            <span />
+            <b>POWER</b>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
 
 function ScoreboardStatus({
   title,
@@ -18,14 +47,24 @@ function ScoreboardStatus({
   description: string;
 }) {
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-3xl items-center px-4 py-8">
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle as="h1">{title}</CardTitle>
-          <CardDescription>{description}</CardDescription>
-        </CardHeader>
-      </Card>
-    </main>
+    <BroadcastFrame>
+      <div className="crt-status">
+        <div className="crt-status-window">
+          <div className="crt-window-title">
+            <span>⚠ SIGNAL STATUS</span>
+            <WindowControls />
+          </div>
+          <div className="crt-status-content">
+            <span className="crt-status-orb" aria-hidden="true">📡</span>
+            <div>
+              <h1>{title}</h1>
+              <p>{description}</p>
+            </div>
+          </div>
+          <div className="crt-loading-bar" aria-hidden="true"><span /></div>
+        </div>
+      </div>
+    </BroadcastFrame>
   );
 }
 
@@ -57,6 +96,32 @@ class ScoreboardErrorBoundary extends Component<
   }
 }
 
+function DateTelemetry({ eligibleCount }: { eligibleCount: number }) {
+  const active = eligibleCount > 0;
+
+  return (
+    <aside className="crt-date-panel">
+      <div className="crt-window-title crt-window-title-hot">
+        <span>DATE MODE</span>
+        <WindowControls />
+      </div>
+      <div className="crt-date-panel-content">
+        <p className="crt-date-state">{active ? "ACTIVATED" : "STANDBY"}</p>
+        <div className="crt-radar" aria-hidden="true">
+          <span className="crt-radar-beam" />
+          <b>♥</b>
+        </div>
+        <p className="crt-date-count">
+          <strong>{eligibleCount}</strong> DATE SIGNALS
+        </p>
+        <div className={active ? "crt-toggle is-active" : "crt-toggle"} aria-hidden="true">
+          <span />
+        </div>
+      </div>
+    </aside>
+  );
+}
+
 function ScoreboardContent() {
   const scoreboard = useQuery(api.scoreboard.get);
 
@@ -71,28 +136,66 @@ function ScoreboardContent() {
 
   const rankedParticipants = rankParticipants(scoreboard.participants);
   const podiumParticipants = selectPodium(rankedParticipants);
+  const eligibleCount = rankedParticipants.filter((participant) => participant.canDate).length;
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
-      <Card>
-        <CardHeader className="text-center">
-          <CardDescription>Live vanuit het vrijgezellenfeest</CardDescription>
-          <CardTitle as="h1" className="text-3xl sm:text-5xl">
-            Wie wordt de vrouw van Tommie?
-          </CardTitle>
-          <p className="text-sm text-muted-foreground" aria-live="polite">
-            De stand wordt automatisch bijgewerkt.
-          </p>
-        </CardHeader>
-      </Card>
+    <BroadcastFrame>
+      <div className="crt-program">
+        <div className="crt-sky" aria-hidden="true">
+          <span className="crt-laser crt-laser-a" />
+          <span className="crt-laser crt-laser-b" />
+          <span className="crt-rainbow" />
+          <span className="crt-cupid">👼</span>
+          <span className="crt-unicorn">🦄</span>
+          <span className="crt-star crt-star-a">✦</span>
+          <span className="crt-star crt-star-b">✧</span>
+          <span className="crt-star crt-star-c">✦</span>
+        </div>
 
-      <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
-        <Podium participants={podiumParticipants} />
-        <MoneyPile amount={scoreboard.tommieMoney} />
+        <header className="crt-hero">
+          <p className="crt-kicker">LIVE VANUIT HET VRIJGEZELLENFEEST</p>
+          <h1 className="crt-logo" aria-label="Tommie Tracker">
+            <span>TOMMIE</span>
+            <strong>TRACKER</strong>
+          </h1>
+          <div className="crt-telemetry-strip">
+            <span>♥</span>
+            <b>LOVE TELEMETRY v1.99</b>
+            <span>♥</span>
+          </div>
+        </header>
+
+        <div className="crt-dashboard">
+          <div className="crt-left-column">
+            <MoneyPile amount={scoreboard.tommieMoney} />
+            <div className="crt-equalizer" aria-hidden="true">
+              {Array.from({ length: 14 }, (_, index) => (
+                <i key={index} style={{ height: `${22 + ((index * 29) % 70)}%` }} />
+              ))}
+            </div>
+          </div>
+
+          <div className="crt-main-column">
+            <Podium participants={podiumParticipants} />
+            <RankingList participants={rankedParticipants} />
+          </div>
+
+          <div className="crt-right-column">
+            <DateTelemetry eligibleCount={eligibleCount} />
+            <div className="crt-command-pad" aria-hidden="true">
+              <span>💋</span><span>♥</span><span>🍸</span>
+              <span>⚡</span><span>★</span><span>☠</span>
+            </div>
+          </div>
+        </div>
+
+        <footer className="crt-taskbar" aria-hidden="true">
+          <b><span>💘</span> START</b>
+          <span>📈</span><span>🌍</span><span>📡</span><span>💾</span><span>🎛️</span>
+          <i>● TRANSMITTING</i>
+        </footer>
       </div>
-
-      <RankingList participants={rankedParticipants} />
-    </main>
+    </BroadcastFrame>
   );
 }
 

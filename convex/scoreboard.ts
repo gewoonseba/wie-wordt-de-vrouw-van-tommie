@@ -26,7 +26,7 @@ export const get = query({
           name: participant.name,
           photoUrl: participant.photoStorageId
             ? await ctx.storage.getUrl(participant.photoStorageId)
-            : null,
+            : (participant.previewPhotoPath ?? null),
           points: participant.points,
           canDate: participant.canDate,
           createdAt: participant.createdAt

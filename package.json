@@ -8,6 +8,7 @@
     "convex:dev": "convex dev",
     "convex:codegen": "convex codegen",
     "convex:deploy": "convex deploy",
+    "seed:participants": "node scripts/seed-participants.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",

@@ -1,5 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "ignoreCommand": "node -e \"process.exit(process.env.VERCEL_ENV === 'preview' && process.env.GITHUB_ACTIONS !== 'true' ? 0 : 1)\"",
-  "buildCommand": "npx convex deploy --cmd-url-env-var-name NEXT_PUBLIC_CONVEX_URL --cmd 'npm run build'"
+  "buildCommand": "node scripts/vercel-build.mjs"
 }

@@ -8,6 +8,8 @@ import { api } from "../../../convex/_generated/api";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { DateEligibilityControl } from "@/components/admin/DateEligibilityControl";
 import { MoneyAdjustmentForm } from "@/components/admin/MoneyAdjustmentForm";
+import { ParticipantManager } from "@/components/admin/ParticipantManager";
+import { ResetStartingStateButton } from "@/components/admin/ResetStartingStateButton";
 import { ScoreAdjustmentForm } from "@/components/admin/ScoreAdjustmentForm";
 import {
   clearAdminToken,
@@ -29,6 +31,7 @@ export default function AdminDashboardPage() {
   const adminToken = useAdminToken();
   const router = useRouter();
   const scoreboard = useQuery(api.scoreboard.get, adminToken ? {} : "skip");
+  const participants = useQuery(api.participants.listForAdmin, adminToken ? { adminToken } : "skip");
 
   function onSessionExpired() {
     clearAdminToken();
@@ -78,6 +81,35 @@ export default function AdminDashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle as="h2">Startstand</CardTitle>
+          <CardDescription>
+            Herstel alle punten, date-statussen en Tommie&apos;s pot naar de ingestelde beginstand.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ResetStartingStateButton
+            adminToken={adminToken}
+            onSessionExpired={onSessionExpired}
+          />
+        </CardContent>
+      </Card>
+
+      {participants ? (
+        <ParticipantManager
+          adminToken={adminToken}
+          onSessionExpired={onSessionExpired}
+          participants={participants}
+        />
+      ) : (
+        <Card>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">Deelnemersbeheer laden…</p>
+          </CardContent>
+        </Card>
+      )}
 
       <section aria-labelledby="participant-controls" className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">

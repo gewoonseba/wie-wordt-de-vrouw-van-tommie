@@ -9,7 +9,9 @@
  */
 
 import type * as authTokens from "../authTokens.js";
+import type * as participants from "../participants.js";
 import type * as scoreboard from "../scoreboard.js";
+import type * as seed from "../seed.js";
 import type * as settings from "../settings.js";
 import type * as trackerAdmin from "../trackerAdmin.js";
 
@@ -21,7 +23,9 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   authTokens: typeof authTokens;
+  participants: typeof participants;
   scoreboard: typeof scoreboard;
+  seed: typeof seed;
   settings: typeof settings;
   trackerAdmin: typeof trackerAdmin;
 }>;

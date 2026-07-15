@@ -4,9 +4,22 @@ import http from "node:http";
 import net from "node:net";
 import { setTimeout as delay } from "node:timers/promises";
 
-const PUBLIC_PORT = 3000;
-const NEXT_PORT = 3001;
-const CONVEX_PORT = 3210;
+import { parsePreferredPort, selectDevPorts } from "./dev-ports.mjs";
+
+const selectedPorts = await selectDevPorts({
+  publicPort: parsePreferredPort(process.env.DEV_PORT, "DEV_PORT", 3000),
+  nextPort: parsePreferredPort(process.env.NEXT_PORT, "NEXT_PORT", 3001),
+  convexCloudPort: parsePreferredPort(process.env.CONVEX_PORT, "CONVEX_PORT", 3210),
+  convexSitePort: parsePreferredPort(
+    process.env.CONVEX_SITE_PORT,
+    "CONVEX_SITE_PORT",
+    3211
+  )
+});
+const PUBLIC_PORT = selectedPorts.public;
+const NEXT_PORT = selectedPorts.next;
+const CONVEX_PORT = selectedPorts.convexCloud;
+const CONVEX_SITE_PORT = selectedPorts.convexSite;
 const children = new Set();
 
 function start(name, command, args, options = {}) {
@@ -185,8 +198,19 @@ process.on("SIGTERM", () => {
   process.exit(143);
 });
 
-console.log("[dev:all] Starting Convex and Next.js...");
-start("convex", "npm", ["run", "convex:dev"]);
+console.log(
+  `[dev:all] Starting on http://localhost:${PUBLIC_PORT} ` +
+  `(Next ${NEXT_PORT}, Convex ${CONVEX_PORT}/${CONVEX_SITE_PORT})...`
+);
+start("convex", "npm", [
+  "run",
+  "convex:dev",
+  "--",
+  "--local-cloud-port",
+  String(CONVEX_PORT),
+  "--local-site-port",
+  String(CONVEX_SITE_PORT)
+]);
 await waitForConvexEnv();
 const normalizeTimer = setInterval(normalizeConvexUrl, 1000);
 proxy = startProxy();

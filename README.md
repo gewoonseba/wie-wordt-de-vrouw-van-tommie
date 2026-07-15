@@ -42,11 +42,14 @@ Convex storage and can safely be run again without resetting scores.
    npm run dev:all
    ```
 
-4. Open `http://localhost:3000` for the scoreboard or
-   `http://localhost:3000/admin/login` for host controls.
+4. Open the URL printed by `dev:all` for the scoreboard, or append
+   `/admin/login` for host controls.
 
 `npm run dev:all` keeps the local frontend and Convex backend behind
-`localhost:3000` so browser previews can use the same origin.
+one same-origin localhost URL. It uses port `3000` when available and
+automatically selects free ports when another worktree is already running.
+Set `DEV_PORT`, `NEXT_PORT`, `CONVEX_PORT`, or `CONVEX_SITE_PORT` to change
+the preferred starting ports.
 
 The default development admin passcode is `tommie-admin`. Set a strong
 `ADMIN_PASSCODE` in the Convex production environment before the event.

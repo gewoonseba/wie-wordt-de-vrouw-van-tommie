@@ -1,14 +1,17 @@
 // @vitest-environment jsdom
 
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Id } from "../convex/_generated/dataModel";
+import { DateCompletedButton } from "@/components/admin/DateCompletedButton";
 import { DateEligibilityControl } from "@/components/admin/DateEligibilityControl";
 import { MoneyAdjustmentForm } from "@/components/admin/MoneyAdjustmentForm";
 import { ParticipantManager } from "@/components/admin/ParticipantManager";
 import { ScoreAdjustmentForm } from "@/components/admin/ScoreAdjustmentForm";
 import { StartNewGameButton } from "@/components/admin/StartNewGameButton";
+import { useDateEligibilityMutation } from "@/components/admin/useDateEligibilityMutation";
 
 const { useMutationMock } = vi.hoisted(() => ({
   useMutationMock: vi.fn()
@@ -20,10 +23,263 @@ vi.mock("convex/react", () => ({
 
 const participantId = "participant-1" as Id<"participants">;
 
+type DateControlHarnessProps = {
+  adminToken: string;
+  canDate: boolean;
+  onSessionExpired: () => void;
+  participantId: Id<"participants">;
+  participantName: string;
+};
+
+function DateCompletedButtonHarness({
+  adminToken,
+  canDate,
+  onSessionExpired,
+  participantId,
+  participantName
+}: DateControlHarnessProps) {
+  const dateEligibility = useDateEligibilityMutation({
+    adminToken,
+    onSessionExpired,
+    participantId
+  });
+
+  return (
+    <DateCompletedButton
+      canDate={canDate}
+      dateEligibility={dateEligibility}
+      participantName={participantName}
+    />
+  );
+}
+
+function DateEligibilityControlHarness({
+  adminToken,
+  canDate,
+  onSessionExpired,
+  participantId,
+  participantName
+}: DateControlHarnessProps) {
+  const dateEligibility = useDateEligibilityMutation({
+    adminToken,
+    onSessionExpired,
+    participantId
+  });
+
+  return (
+    <DateEligibilityControl
+      canDate={canDate}
+      dateEligibility={dateEligibility}
+      participantId={participantId}
+      participantName={participantName}
+    />
+  );
+}
+
+function SharedDateControlsHarness(props: DateControlHarnessProps) {
+  const dateEligibility = useDateEligibilityMutation({
+    adminToken: props.adminToken,
+    onSessionExpired: props.onSessionExpired,
+    participantId: props.participantId
+  });
+
+  return (
+    <>
+      <DateCompletedButton
+        canDate={props.canDate}
+        dateEligibility={dateEligibility}
+        participantName={props.participantName}
+      />
+      <DateEligibilityControl
+        canDate={false}
+        dateEligibility={dateEligibility}
+        participantId={props.participantId}
+        participantName={props.participantName}
+      />
+    </>
+  );
+}
+
+type ScoreAdjustmentFormHarnessProps = Omit<
+  ComponentProps<typeof ScoreAdjustmentForm>,
+  "dateEligibility"
+>;
+
+function ScoreAdjustmentFormHarness(props: ScoreAdjustmentFormHarnessProps) {
+  const dateEligibility = useDateEligibilityMutation({
+    adminToken: props.adminToken,
+    onSessionExpired: props.onSessionExpired,
+    participantId: props.participantId
+  });
+
+  return (
+    <>
+      <DateCompletedButton
+        canDate={props.canDate}
+        dateEligibility={dateEligibility}
+        participantName={props.participantName}
+      />
+      <ScoreAdjustmentForm {...props} dateEligibility={dateEligibility} />
+    </>
+  );
+}
+
 afterEach(() => {
   cleanup();
   useMutationMock.mockReset();
   vi.restoreAllMocks();
+});
+
+describe("DateCompletedButton", () => {
+  it("marks an eligible participant's date as completed", async () => {
+    const setDateEligibility = vi.fn().mockResolvedValue({ canDate: false });
+    useMutationMock.mockReturnValue(setDateEligibility);
+
+    render(
+      <DateCompletedButtonHarness
+        adminToken="admin-token"
+        canDate
+        onSessionExpired={vi.fn()}
+        participantId={participantId}
+        participantName="Noor"
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Date gehad met Noor" }));
+
+    await waitFor(() => {
+      expect(setDateEligibility).toHaveBeenCalledWith({
+        adminToken: "admin-token",
+        participantId,
+        canDate: false
+      });
+    });
+  });
+
+  it("allows only one in-flight date completion", async () => {
+    let resolveMutation!: (result: { canDate: false }) => void;
+    const setDateEligibility = vi.fn().mockReturnValue(
+      new Promise<{ canDate: false }>((resolve) => {
+        resolveMutation = resolve;
+      })
+    );
+    useMutationMock.mockReturnValue(setDateEligibility);
+
+    render(
+      <DateCompletedButtonHarness
+        adminToken="admin-token"
+        canDate
+        onSessionExpired={vi.fn()}
+        participantId={participantId}
+        participantName="Noor"
+      />
+    );
+    const button = screen.getByRole("button", { name: "Date gehad met Noor" });
+
+    await act(async () => {
+      button.click();
+      button.click();
+    });
+
+    expect(setDateEligibility).toHaveBeenCalledTimes(1);
+    await act(async () => resolveMutation({ canDate: false }));
+  });
+
+  it("allows only one in-flight date update across quick and manual controls", async () => {
+    let resolveMutation!: (result: { canDate: false }) => void;
+    const setDateEligibility = vi.fn().mockReturnValue(
+      new Promise<{ canDate: false }>((resolve) => {
+        resolveMutation = resolve;
+      })
+    );
+    useMutationMock.mockReturnValue(setDateEligibility);
+
+    render(
+      <SharedDateControlsHarness
+        adminToken="admin-token"
+        canDate
+        onSessionExpired={vi.fn()}
+        participantId={participantId}
+        participantName="Noor"
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Date gehad met Noor" }));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Date gehad met Noor" }).hasAttribute("disabled"))
+        .toBe(true);
+      expect(screen.getByRole("checkbox", { name: "May date Tommie" }).getAttribute("aria-disabled"))
+        .toBe("true");
+    });
+    fireEvent.click(screen.getByRole("checkbox", { name: "May date Tommie" }));
+
+    expect(setDateEligibility).toHaveBeenCalledTimes(1);
+    expect(setDateEligibility).toHaveBeenCalledWith({
+      adminToken: "admin-token",
+      participantId,
+      canDate: false
+    });
+    await act(async () => resolveMutation({ canDate: false }));
+  });
+
+  it("is disabled when the participant already completed a date", () => {
+    useMutationMock.mockReturnValue(vi.fn());
+
+    render(
+      <DateCompletedButtonHarness
+        adminToken="admin-token"
+        canDate={false}
+        onSessionExpired={vi.fn()}
+        participantId={participantId}
+        participantName="Noor"
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "Date geregistreerd voor Noor" }).hasAttribute("disabled"))
+      .toBe(true);
+  });
+
+  it("shows ordinary errors and delegates expired sessions", async () => {
+    const onSessionExpired = vi.fn();
+    const setDateEligibility = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("Date service unavailable."))
+      .mockRejectedValueOnce(new Error("Admin session is missing or expired."));
+    useMutationMock.mockReturnValue(setDateEligibility);
+
+    render(
+      <DateCompletedButtonHarness
+        adminToken="admin-token"
+        canDate
+        onSessionExpired={onSessionExpired}
+        participantId={participantId}
+        participantName="Noor"
+      />
+    );
+    const button = screen.getByRole("button", { name: "Date gehad met Noor" });
+
+    fireEvent.click(button);
+    expect(await screen.findByText("Date service unavailable.")).toBeTruthy();
+
+    fireEvent.click(button);
+    await waitFor(() => expect(onSessionExpired).toHaveBeenCalledOnce());
+  });
+
+  it("shows a fallback for non-Error failures", async () => {
+    useMutationMock.mockReturnValue(vi.fn().mockRejectedValue("offline"));
+
+    render(
+      <DateCompletedButtonHarness
+        adminToken="admin-token"
+        canDate
+        onSessionExpired={vi.fn()}
+        participantId={participantId}
+        participantName="Noor"
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Date gehad met Noor" }));
+
+    expect(await screen.findByText("Date status failed.")).toBeTruthy();
+  });
 });
 
 describe("StartNewGameButton", () => {
@@ -83,12 +339,13 @@ describe("ScoreAdjustmentForm", () => {
     const adjustScore = vi.fn().mockResolvedValue({ points: 47 });
     const playCard = vi.fn().mockResolvedValue({ points: 50, canDate: true });
     useMutationMock
+      .mockReturnValueOnce(vi.fn())
       .mockReturnValueOnce(adjustScore)
       .mockReturnValueOnce(playCard)
       .mockReturnValue(vi.fn());
 
     render(
-      <ScoreAdjustmentForm
+      <ScoreAdjustmentFormHarness
         adminToken="admin-token"
         canDate={false}
         currentScore={40}
@@ -125,7 +382,7 @@ describe("ScoreAdjustmentForm", () => {
     useMutationMock.mockReturnValue(adjustScore);
 
     render(
-      <ScoreAdjustmentForm
+      <ScoreAdjustmentFormHarness
         adminToken="admin-token"
         canDate={false}
         currentScore={40}
@@ -160,10 +417,14 @@ describe("ScoreAdjustmentForm", () => {
         resolveMutation = resolve;
       })
     );
-    useMutationMock.mockReturnValueOnce(vi.fn()).mockReturnValueOnce(playCard).mockReturnValue(vi.fn());
+    useMutationMock
+      .mockReturnValueOnce(vi.fn())
+      .mockReturnValueOnce(vi.fn())
+      .mockReturnValueOnce(playCard)
+      .mockReturnValue(vi.fn());
 
     render(
-      <ScoreAdjustmentForm
+      <ScoreAdjustmentFormHarness
         adminToken="admin-token"
         canDate={false}
         currentScore={40}
@@ -192,7 +453,7 @@ describe("ScoreAdjustmentForm", () => {
     useMutationMock.mockReturnValue(adjustScore);
 
     const view = render(
-      <ScoreAdjustmentForm
+      <ScoreAdjustmentFormHarness
         adminToken="admin-token"
         canDate={false}
         currentScore={40}
@@ -224,7 +485,7 @@ describe("ScoreAdjustmentForm", () => {
     useMutationMock.mockReturnValue(setDateEligibility);
 
     render(
-      <ScoreAdjustmentForm
+      <ScoreAdjustmentFormHarness
         adminToken="admin-token"
         canDate={false}
         currentScore={40}
@@ -262,7 +523,7 @@ describe("other admin controls", () => {
       participantName: "Noor"
     };
 
-    const view = render(<DateEligibilityControl {...props} canDate={false} />);
+    const view = render(<DateEligibilityControlHarness {...props} canDate={false} />);
     fireEvent.click(screen.getByRole("checkbox", { name: "May date Tommie" }));
     await waitFor(() => {
       expect(setDateEligibility).toHaveBeenLastCalledWith({
@@ -272,7 +533,7 @@ describe("other admin controls", () => {
       });
     });
 
-    view.rerender(<DateEligibilityControl {...props} canDate />);
+    view.rerender(<DateEligibilityControlHarness {...props} canDate />);
     fireEvent.click(screen.getByRole("checkbox", { name: "May date Tommie" }));
     await waitFor(() => {
       expect(setDateEligibility).toHaveBeenLastCalledWith({
@@ -425,6 +686,7 @@ describe("other admin controls", () => {
     const card = screen.getByRole("heading", { name: "Noor" }).closest('[data-slot="card"]');
     if (!(card instanceof HTMLElement)) throw new Error("Expected one unified participant card.");
     expect(within(card).getByRole("button", { name: "Play 2 for 2 points" })).toBeTruthy();
+    expect(within(card).getByRole("button", { name: "Date gehad met Noor" })).toBeTruthy();
     expect(within(card).queryByRole("checkbox", { name: "May date Tommie" })).toBeNull();
     fireEvent.click(within(card).getByRole("button", { name: "Manual correction" }));
     expect(within(card).getByRole("checkbox", { name: "May date Tommie" })).toBeTruthy();

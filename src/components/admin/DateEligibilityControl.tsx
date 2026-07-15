@@ -1,56 +1,26 @@
 "use client";
 
-import { useMutation } from "convex/react";
-import { useState } from "react";
-
 import type { Id } from "../../../convex/_generated/dataModel";
-import { api } from "../../../convex/_generated/api";
+import type { DateEligibilityMutation } from "@/components/admin/useDateEligibilityMutation";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
-import { isAdminSessionExpired } from "@/lib/admin-session";
+import { Field, FieldContent, FieldDescription, FieldLabel } from "@/components/ui/field";
 
 type DateEligibilityControlProps = {
-  adminToken: string;
   canDate: boolean;
+  dateEligibility: DateEligibilityMutation;
   disabled?: boolean;
-  onPendingChange?: (pending: boolean) => void;
-  onSessionExpired: () => void;
   participantId: Id<"participants">;
   participantName: string;
 };
 
 export function DateEligibilityControl({
-  adminToken,
   canDate,
+  dateEligibility,
   disabled = false,
-  onPendingChange,
-  onSessionExpired,
   participantId,
   participantName
 }: DateEligibilityControlProps) {
-  const setDateEligibility = useMutation(api.trackerAdmin.setDateEligibility);
-  const [error, setError] = useState("");
-  const [isSubmitting, setSubmitting] = useState(false);
-
-  async function save(desiredState: boolean) {
-    if (isSubmitting) return;
-    setError("");
-    setSubmitting(true);
-    onPendingChange?.(true);
-    try {
-      await setDateEligibility({ adminToken, participantId, canDate: desiredState });
-    } catch (caught) {
-      if (isAdminSessionExpired(caught)) {
-        onSessionExpired();
-        return;
-      }
-      const message = caught instanceof Error ? caught.message : "Date status failed.";
-      setError(message);
-    } finally {
-      setSubmitting(false);
-      onPendingChange?.(false);
-    }
-  }
+  const { error, isSubmitting, save } = dateEligibility;
 
   const isDisabled = disabled || isSubmitting;
 
@@ -69,7 +39,6 @@ export function DateEligibilityControl({
           Set {participantName}&apos;s exact eligibility state.
           {isSubmitting ? " Saving…" : ""}
         </FieldDescription>
-        {error ? <FieldError>{error}</FieldError> : null}
       </FieldContent>
     </Field>
   );

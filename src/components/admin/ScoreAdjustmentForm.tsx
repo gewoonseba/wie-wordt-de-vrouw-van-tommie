@@ -6,6 +6,7 @@ import { memo, type FormEvent, useRef, useState } from "react";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { api } from "../../../convex/_generated/api";
 import { DateEligibilityControl } from "@/components/admin/DateEligibilityControl";
+import type { DateEligibilityMutation } from "@/components/admin/useDateEligibilityMutation";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -32,6 +33,7 @@ type ScoreAdjustmentFormProps = {
   adminToken: string;
   canDate: boolean;
   currentScore: number;
+  dateEligibility: DateEligibilityMutation;
   onSessionExpired: () => void;
   participantId: Id<"participants">;
   participantName: string;
@@ -41,6 +43,7 @@ export function ScoreAdjustmentForm({
   adminToken,
   canDate,
   currentScore,
+  dateEligibility,
   onSessionExpired,
   participantId,
   participantName
@@ -49,15 +52,14 @@ export function ScoreAdjustmentForm({
   const playCard = useMutation(api.trackerAdmin.playCard);
   const [input, setInput] = useState("");
   const [error, setError] = useState("");
-  const [isDateSubmitting, setDateSubmitting] = useState(false);
   const [isManualOpen, setManualOpen] = useState(false);
   const [isSubmitting, setSubmitting] = useState(false);
   const isSubmittingRef = useRef(false);
-  const isBusy = isSubmitting || isDateSubmitting;
+  const isBusy = isSubmitting || dateEligibility.isSubmitting;
   const projection = isManualOpen ? projectedTotal(currentScore, input) : null;
 
   async function submitChange(change: () => Promise<unknown>) {
-    if (isSubmittingRef.current || isDateSubmitting) return;
+    if (isSubmittingRef.current || dateEligibility.isSubmitting) return;
 
     setError("");
     isSubmittingRef.current = true;
@@ -161,11 +163,9 @@ export function ScoreAdjustmentForm({
           </form>
           <div className="border-t border-border pt-4 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
             <DateEligibilityControl
-              adminToken={adminToken}
               canDate={canDate}
+              dateEligibility={dateEligibility}
               disabled={isSubmitting}
-              onPendingChange={setDateSubmitting}
-              onSessionExpired={onSessionExpired}
               participantId={participantId}
               participantName={participantName}
             />

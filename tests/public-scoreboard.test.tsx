@@ -65,6 +65,8 @@ describe("ScoreboardClient", () => {
       "3 DATE SIGNALS"
     );
     expect(screen.getByText(/€.*1\.500/)).toBeTruthy();
+    expect(screen.queryByText("DOOR TOMMIE VERDIEND")).toBeNull();
+    expect(screen.queryByText("Elke laag staat voor € 500.")).toBeNull();
 
     queryResult = {
       ...queryResult,

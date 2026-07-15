@@ -12,12 +12,13 @@ function getPileDescription(layerCount: number) {
   if (layerCount === MAX_MONEY_PILE_LAYERS) {
     return "De geldstapel zit op zijn visuele maximum.";
   }
-  return "Elke laag staat voor € 500.";
+  return null;
 }
 
 export function MoneyPile({ amount }: { amount: number }) {
   const layerCount = getMoneyPileLayerCount(amount);
   const layers = Array.from({ length: layerCount }, (_, index) => index);
+  const description = getPileDescription(layerCount);
 
   return (
     <section className="crt-money-window">
@@ -26,7 +27,6 @@ export function MoneyPile({ amount }: { amount: number }) {
         <WindowControls />
       </div>
       <div className="crt-money-content">
-        <p>DOOR TOMMIE VERDIEND</p>
         <output key={amount} className="crt-money-amount">
           {formatEuro(amount)}
         </output>
@@ -43,8 +43,7 @@ export function MoneyPile({ amount }: { amount: number }) {
             </div>
           )}
         </div>
-
-        <p className="crt-money-description">{getPileDescription(layerCount)}</p>
+        {description ? <p className="crt-money-description">{description}</p> : null}
       </div>
     </section>
   );

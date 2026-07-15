@@ -134,7 +134,13 @@ function DateTelemetry({ eligibleCount }: { eligibleCount: number }) {
           <b>♥</b>
         </div>
         <p className="crt-date-count">
-          <strong>{eligibleCount}</strong> DATE SIGNALS
+          <span className="crt-date-zap" aria-hidden="true">⚡</span>
+          <strong>{eligibleCount} </strong>
+          <span className="crt-date-count-label">
+            DATE SIGNALS!
+            <small>LOVE OVERLOAD</small>
+          </span>
+          <span className="crt-date-zap" aria-hidden="true">⚡</span>
         </p>
         <div className={active ? "crt-toggle is-active" : "crt-toggle"} aria-hidden="true">
           <span />

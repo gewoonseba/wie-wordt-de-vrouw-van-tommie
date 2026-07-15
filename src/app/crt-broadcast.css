@@ -353,14 +353,6 @@
   text-align: center;
 }
 
-.crt-money-content > p:first-child {
-  margin: 0;
-  color: #69ff5a;
-  font-family: "Courier New", monospace;
-  font-size: 10px;
-  letter-spacing: .05em;
-}
-
 .crt-money-amount {
   display: block;
   margin: 4px 0 8px;
@@ -794,13 +786,38 @@
 }
 
 .crt-date-count {
-  margin: 9px 0;
-  color: #ff77c8;
-  font-family: "Courier New", monospace;
-  font-size: 9px;
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 8px;
+  width: calc(100% - 12px);
+  margin: 10px 6px 13px;
+  padding: 5px 12px;
+  transform: rotate(-2deg);
+  border: 3px outset #fff36b;
+  background: repeating-linear-gradient(135deg, #fff600 0 9px, #ff2ca4 9px 18px);
+  color: #08000b;
+  font-family: Impact, "Arial Black", sans-serif;
+  box-shadow: 4px 5px 0 #000, 0 0 18px #ffef00;
+  text-shadow: 1px 1px #fff;
+  animation: crt-date-alert 1.8s steps(2, end) infinite;
 }
 
-.crt-date-count strong { color: white; font-size: 20px; }
+.crt-date-count strong {
+  padding: 0 5px;
+  background: #070008;
+  color: #fff600;
+  font-size: 29px;
+  line-height: 1.05;
+  text-shadow: 0 0 8px #fff600;
+}
+
+.crt-date-count-label { padding: 4px 5px; background: #070008; color: #fff; font-size: 15px; line-height: .88; letter-spacing: -.25px; text-shadow: 2px 2px #ff008c; }
+.crt-date-count-label small { display: block; margin-top: 4px; color: #fff600; font-family: "Courier New", monospace; font-size: 7px; letter-spacing: 0; text-shadow: none; }
+.crt-date-zap { position: absolute; top: -12px; color: #fff; font-size: 20px; filter: drop-shadow(2px 2px #ff007f); }
+.crt-date-zap:first-child { left: -7px; transform: rotate(-16deg); }
+.crt-date-zap:last-child { right: -7px; transform: rotate(16deg); }
 
 .crt-toggle {
   position: relative;

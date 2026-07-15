@@ -8,6 +8,11 @@
 @keyframes crt-row-in { from { transform: translateX(35px); opacity: 0; } }
 @keyframes crt-heartbeat { 50% { transform: scale(1.12); filter: brightness(1.6); } }
 @keyframes crt-radar { to { transform: rotate(360deg); } }
+@keyframes crt-date-alert {
+  0%, 78%, 100% { transform: rotate(-2deg) scale(1); filter: brightness(1); }
+  82% { transform: rotate(2deg) scale(1.06); filter: brightness(1.45); }
+  88% { transform: rotate(-4deg) scale(.98); }
+}
 @keyframes crt-loading { to { width: 94%; } }
 @keyframes crt-signal-slip {
   0%, 89%, 91%, 93%, 100% { transform: translateX(0) skewX(0); }

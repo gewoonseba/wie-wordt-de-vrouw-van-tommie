@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "./crt-broadcast.css";
+@import "./crt-broadcast-motion.css";
 
 @custom-variant dark (&:is(.dark *));
 

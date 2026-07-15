@@ -1,11 +1,27 @@
 import { v } from "convex/values";
 
-import { mutation } from "./_generated/server";
+import { mutation, type MutationCtx } from "./_generated/server";
 import { assertAdmin } from "./authTokens";
 import { PARTICIPANT_ROSTER, STARTING_MONEY } from "./seed";
 import { getOrCreateSettings } from "./settings";
 
 const MAX_PARTICIPANTS = 100;
+
+async function getResettableParticipants(ctx: MutationCtx) {
+  const participants = await ctx.db.query("participants").take(MAX_PARTICIPANTS + 1);
+  if (participants.length > MAX_PARTICIPANTS) {
+    throw new Error(`Reset supports at most ${MAX_PARTICIPANTS} participants.`);
+  }
+  return participants;
+}
+
+async function setTommieMoney(ctx: MutationCtx, tommieMoney: number, updatedAt: number) {
+  const settings = await getOrCreateSettings(ctx);
+  if (!settings._id) {
+    throw new Error("Settings were not persisted.");
+  }
+  await ctx.db.patch(settings._id, { tommieMoney, updatedAt });
+}
 
 function assertNonZeroInteger(value: number, label: string) {
   if (!Number.isSafeInteger(value) || value === 0) {
@@ -141,10 +157,7 @@ export const resetToStartingState = mutation({
   args: { adminToken: v.string() },
   handler: async (ctx, args) => {
     await assertAdmin(ctx, args.adminToken);
-    const participants = await ctx.db.query("participants").take(MAX_PARTICIPANTS + 1);
-    if (participants.length > MAX_PARTICIPANTS) {
-      throw new Error(`Reset supports at most ${MAX_PARTICIPANTS} participants.`);
-    }
+    const participants = await getResettableParticipants(ctx);
 
     const startingState = new Map<string, { points: number; canDate: boolean }>(
       PARTICIPANT_ROSTER.map((participant) => [participant.seedKey, participant])
@@ -159,15 +172,29 @@ export const resetToStartingState = mutation({
       });
     }
 
-    const settings = await getOrCreateSettings(ctx);
-    if (!settings._id) {
-      throw new Error("Settings were not persisted.");
-    }
-    await ctx.db.patch(settings._id, {
-      tommieMoney: STARTING_MONEY,
-      updatedAt: now
-    });
+    await setTommieMoney(ctx, STARTING_MONEY, now);
 
     return { participantCount: participants.length, tommieMoney: STARTING_MONEY };
+  }
+});
+
+export const startNewGame = mutation({
+  args: { adminToken: v.string() },
+  handler: async (ctx, args) => {
+    await assertAdmin(ctx, args.adminToken);
+    const participants = await getResettableParticipants(ctx);
+
+    const now = Date.now();
+    for (const participant of participants) {
+      await ctx.db.patch(participant._id, {
+        points: 0,
+        canDate: true,
+        updatedAt: now
+      });
+    }
+
+    await setTommieMoney(ctx, 0, now);
+
+    return { participantCount: participants.length, tommieMoney: 0 };
   }
 });

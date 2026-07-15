@@ -80,8 +80,8 @@ The command prompts for the production admin passcode (or accepts it through
 Set `PARTICIPANT_PHOTO_DIR` when that folder is elsewhere. Preview deployments
 seed the same 15 names automatically through Convex's `--preview-run` hook.
 The seed starts with €1,000 in Tommie&apos;s pot, preset individual scores, and
-date eligibility for Tommie, Seba, and Chiel. Admin can restore this start
-state with **Startstand herstellen**.
+date eligibility for Tommie, Seba, and Chiel. Admin can start a new game with
+all scores and the pot at zero and all date flags enabled.
 
 | Platform | Variable | Notes |
 |---|---|---|

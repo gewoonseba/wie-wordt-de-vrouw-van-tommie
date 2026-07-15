@@ -8,6 +8,7 @@ import { DateEligibilityControl } from "@/components/admin/DateEligibilityContro
 import { MoneyAdjustmentForm } from "@/components/admin/MoneyAdjustmentForm";
 import { ParticipantManager } from "@/components/admin/ParticipantManager";
 import { ScoreAdjustmentForm } from "@/components/admin/ScoreAdjustmentForm";
+import { StartNewGameButton } from "@/components/admin/StartNewGameButton";
 
 const { useMutationMock } = vi.hoisted(() => ({
   useMutationMock: vi.fn()
@@ -22,6 +23,59 @@ const participantId = "participant-1" as Id<"participants">;
 afterEach(() => {
   cleanup();
   useMutationMock.mockReset();
+  vi.restoreAllMocks();
+});
+
+describe("StartNewGameButton", () => {
+  it("confirms and starts a new game with the admin token", async () => {
+    const startNewGame = vi.fn().mockResolvedValue({ participantCount: 15, tommieMoney: 0 });
+    useMutationMock.mockReturnValue(startNewGame);
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    render(
+      <StartNewGameButton adminToken="admin-token" onSessionExpired={vi.fn()} />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Nieuw spel starten" }));
+
+    await waitFor(() => {
+      expect(startNewGame).toHaveBeenCalledWith({ adminToken: "admin-token" });
+    });
+  });
+
+  it("does not start without confirmation", () => {
+    const startNewGame = vi.fn();
+    useMutationMock.mockReturnValue(startNewGame);
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+
+    render(
+      <StartNewGameButton adminToken="admin-token" onSessionExpired={vi.fn()} />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Nieuw spel starten" }));
+
+    expect(startNewGame).not.toHaveBeenCalled();
+  });
+
+  it("delegates expired sessions without showing a local error", async () => {
+    const onSessionExpired = vi.fn();
+    const startNewGame = vi
+      .fn()
+      .mockRejectedValue(new Error("Admin session is missing or expired."));
+    useMutationMock.mockReturnValue(startNewGame);
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    render(
+      <StartNewGameButton
+        adminToken="admin-token"
+        onSessionExpired={onSessionExpired}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Nieuw spel starten" }));
+
+    await waitFor(() => {
+      expect(onSessionExpired).toHaveBeenCalledOnce();
+    });
+    expect(screen.queryByText("Admin session is missing or expired.")).toBeNull();
+  });
 });
 
 describe("ScoreAdjustmentForm", () => {

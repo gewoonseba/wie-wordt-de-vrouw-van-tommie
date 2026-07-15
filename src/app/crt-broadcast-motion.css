@@ -9,6 +9,17 @@
 @keyframes crt-heartbeat { 50% { transform: scale(1.12); filter: brightness(1.6); } }
 @keyframes crt-radar { to { transform: rotate(360deg); } }
 @keyframes crt-loading { to { width: 94%; } }
+@keyframes crt-signal-slip {
+  0%, 89%, 91%, 93%, 100% { transform: translateX(0) skewX(0); }
+  90% { transform: translateX(5px) skewX(.35deg); }
+  92% { transform: translateX(-8px) skewX(-.55deg); }
+}
+@keyframes crt-modal-pop {
+  from { transform: scale(.86) translateY(28px); opacity: 0; }
+  70% { transform: scale(1.025) translateY(0); opacity: 1; }
+}
+
+.crt-program { animation: crt-signal-slip 11s steps(1, end) infinite; }
 
 @media (max-width: 1120px) {
   .crt-dashboard { grid-template-columns: minmax(170px, .7fr) minmax(480px, 2.2fr); }
@@ -22,12 +33,18 @@
   .crt-broadcast { padding: 0; }
   .crt-cabinet { padding: 9px 9px 50px; border-radius: 12px; }
   .crt-cabinet::before, .crt-cabinet::after { display: none; }
-  .crt-glass { min-height: 100svh; border-width: 7px; border-radius: 18px; }
+  .crt-glass {
+    --crt-glass-border: 7px;
+    --crt-glass-radius: 18px;
+    min-height: 100svh;
+  }
+  .crt-screen-content { filter: url("#crt-barrel-warp-mobile"); }
   .crt-program { padding: 14px 8px 56px; }
   .crt-desktop-bar { font-size: 8px; }
   .crt-window-controls i { width: 18px; height: 17px; }
   .crt-cupid, .crt-unicorn { top: 77px; font-size: 43px; }
-  .crt-logo { flex-direction: column; gap: 0; align-items: center; font-size: clamp(50px, 18vw, 82px); line-height: .77; }
+  .crt-logo { font-size: clamp(50px, 18vw, 82px); line-height: .77; }
+  .crt-logo span { font-size: .28em; }
   .crt-kicker { font-size: 7px; }
   .crt-hero { min-height: 174px; }
   .crt-telemetry-strip { margin-top: 14px; font-size: 10px; }

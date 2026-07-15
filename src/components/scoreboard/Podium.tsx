@@ -5,7 +5,13 @@ import { WindowControls } from "@/components/scoreboard/WindowControls";
 
 const PODIUM_DECORATIONS = ["👑", "🐬", "🍸"];
 
-export function Podium({ participants }: { participants: ScoreboardParticipant[] }) {
+export function Podium({
+  participants,
+  onSelect
+}: {
+  participants: ScoreboardParticipant[];
+  onSelect: (participantId: ScoreboardParticipant["_id"]) => void;
+}) {
   return (
     <section className="crt-podium-window" aria-labelledby="podium-title">
       <div className="crt-window-title">
@@ -32,28 +38,35 @@ export function Podium({ participants }: { participants: ScoreboardParticipant[]
                 key={`${participant._id}-${participant.points}`}
                 className={`crt-podium-card crt-podium-rank-${rank}`}
               >
-                <span className="crt-podium-decoration" aria-hidden="true">
-                  {PODIUM_DECORATIONS[index]}
-                </span>
-                <div className="crt-portrait-burst">
-                  <Avatar className="crt-podium-avatar">
-                    {participant.photoUrl ? (
-                      <AvatarImage
-                        src={participant.photoUrl}
-                        alt={`Portret van ${participant.name}`}
-                      />
-                    ) : null}
-                    <AvatarFallback>{getInitials(participant.name)}</AvatarFallback>
-                  </Avatar>
-                </div>
-                <div className="crt-podium-nameplate">
-                  <span>{participant.name}</span>
-                  <b>{participant.points} PT</b>
-                </div>
-                <div className="crt-podium-step">
-                  <strong>{rank}</strong>
-                  <span>{participant.canDate ? "DATE!" : "LOCKED"}</span>
-                </div>
+                <button
+                  type="button"
+                  className="crt-podium-trigger"
+                  aria-label={`Bekijk ${participant.name}`}
+                  onClick={() => onSelect(participant._id)}
+                >
+                  <span className="crt-podium-decoration" aria-hidden="true">
+                    {PODIUM_DECORATIONS[index]}
+                  </span>
+                  <span className="crt-portrait-burst">
+                    <Avatar className="crt-podium-avatar">
+                      {participant.photoUrl ? (
+                        <AvatarImage
+                          src={participant.photoUrl}
+                          alt={`Portret van ${participant.name}`}
+                        />
+                      ) : null}
+                      <AvatarFallback>{getInitials(participant.name)}</AvatarFallback>
+                    </Avatar>
+                  </span>
+                  <span className="crt-podium-nameplate">
+                    <span>{participant.name}</span>
+                    <b>{participant.points} PT</b>
+                  </span>
+                  <span className="crt-podium-step">
+                    <strong>{rank}</strong>
+                    <span>{participant.canDate ? "DATE!" : "LOCKED"}</span>
+                  </span>
+                </button>
               </li>
             );
           })}

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import ParticipantPage from "@/app/p/[token]/page";
@@ -17,6 +18,19 @@ vi.mock("convex/react", () => ({
 
 vi.mock("next/navigation", () => ({
   redirect: redirectMock
+}));
+
+vi.mock("@/components/ui/avatar", () => ({
+  Avatar: ({ children, ...props }: ComponentProps<"div">) => (
+    <div {...props}>{children}</div>
+  ),
+  AvatarImage: (props: ComponentProps<"img">) => (
+    // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
+    <img {...props} />
+  ),
+  AvatarFallback: ({ children, ...props }: ComponentProps<"span">) => (
+    <span {...props}>{children}</span>
+  )
 }));
 
 afterEach(() => {
@@ -36,6 +50,9 @@ describe("ScoreboardClient", () => {
     queryResult = populatedScoreboard();
     view.rerender(<ScoreboardClient />);
 
+    expect(
+      screen.getByRole("heading", { name: "Wie Wordt de Vrouw van Tommie" })
+    ).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Het podium" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Volledige stand" })).toBeTruthy();
     expect(screen.getAllByText("Noor")).toHaveLength(2);
@@ -45,7 +62,7 @@ describe("ScoreboardClient", () => {
     expect(screen.getByText("ACTIVATED")).toBeTruthy();
     expect(document.querySelector(".crt-toggle")?.classList.contains("is-active")).toBe(true);
     expect(document.querySelector(".crt-date-count")?.textContent).toContain(
-      "2 DATE SIGNALS"
+      "3 DATE SIGNALS"
     );
     expect(screen.getByText(/€.*1\.500/)).toBeTruthy();
 
@@ -60,6 +77,68 @@ describe("ScoreboardClient", () => {
 
     expect(screen.getByText(/€.*2\.000/)).toBeTruthy();
     expect(screen.getAllByText("55").length).toBeGreaterThan(0);
+  });
+
+  it("opens and closes a Windows-style participant detail window", async () => {
+    let queryResult = populatedScoreboard();
+    useQueryMock.mockImplementation(() => queryResult);
+
+    const view = render(<ScoreboardClient />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Bekijk Noor" })[0]);
+
+    const dialog = screen.getByRole("dialog", { name: "Noor details" });
+    expect(dialog).toBeTruthy();
+    expect(screen.getByText("50 POINTS")).toBeTruthy();
+    expect(screen.getByText("GEEN DATE MET TOMMIE")).toBeTruthy();
+
+    queryResult = {
+      ...queryResult,
+      participants: queryResult.participants.map((participant) =>
+        participant._id === "noor"
+          ? { ...participant, points: 77, canDate: true }
+          : participant
+      )
+    };
+    view.rerender(<ScoreboardClient />);
+    expect(screen.getByText("77 POINTS")).toBeTruthy();
+    expect(screen.getByText("MAG OP DATE MET TOMMIE")).toBeTruthy();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Bekijk Lisa" })[0]);
+    expect(screen.getByRole("dialog", { name: "Lisa details" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Sluit details" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Bekijk Mia" }));
+    expect(screen.getByRole("dialog", { name: "Mia details" })).toBeTruthy();
+    expect(screen.getByText("RANK #04")).toBeTruthy();
+    expect(screen.getByText("20 POINTS")).toBeTruthy();
+    expect(screen.getByText("MAG OP DATE MET TOMMIE")).toBeTruthy();
+    expect(screen.getByAltText("Portret van Mia").getAttribute("src")).toBe("/mia.png");
+    fireEvent.click(screen.getByRole("button", { name: "OK" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Bekijk Mia" }));
+    fireEvent.mouseDown(document.querySelector(".crt-modal-backdrop")!);
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Bekijk Mia" }));
+    queryResult = {
+      ...queryResult,
+      participants: queryResult.participants.filter(
+        (participant) => participant._id !== "mia"
+      )
+    };
+    view.rerender(<ScoreboardClient />);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await act(async () => Promise.resolve());
+
+    queryResult = populatedScoreboard();
+    view.rerender(<ScoreboardClient />);
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("renders intentional empty states", () => {
@@ -113,6 +192,14 @@ function populatedScoreboard() {
         points: 30,
         canDate: true,
         createdAt: 3
+      },
+      {
+        _id: "mia",
+        name: "Mia",
+        photoUrl: "/mia.png",
+        points: 20,
+        canDate: true,
+        createdAt: 4
       }
     ],
     tommieMoney: 1_500

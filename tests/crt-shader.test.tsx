@@ -51,6 +51,7 @@ function createWebGlStub() {
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -124,5 +125,48 @@ describe("CrtShaderOverlay", () => {
     expect(addListener).toHaveBeenCalledWith("resize", expect.any(Function));
     view.unmount();
     expect(removeListener).toHaveBeenCalledWith("resize", expect.any(Function));
+  });
+
+  it("pauses its scheduled frames while hidden and resumes when visible", () => {
+    vi.useFakeTimers();
+    const gl = createWebGlStub();
+    let hidden = false;
+    let frameCallback: FrameCallback | undefined;
+    const requestFrame = vi.fn((callback: FrameCallback) => {
+      frameCallback = callback;
+      return 21;
+    });
+    const cancelFrame = vi.fn();
+
+    vi.stubGlobal("WebGLRenderingContext", class {});
+    vi.stubGlobal("ResizeObserver", undefined);
+    vi.stubGlobal("requestAnimationFrame", requestFrame);
+    vi.stubGlobal("cancelAnimationFrame", cancelFrame);
+    vi.spyOn(document, "hidden", "get").mockImplementation(() => hidden);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
+      gl as unknown as WebGLRenderingContext
+    );
+
+    const view = render(<CrtShaderOverlay />);
+    act(() => frameCallback?.(100));
+    expect(gl.drawArrays).toHaveBeenCalledTimes(1);
+
+    hidden = true;
+    act(() => document.dispatchEvent(new Event("visibilitychange")));
+    act(() => vi.advanceTimersByTime(40));
+    expect(requestFrame).toHaveBeenCalledTimes(1);
+    expect(cancelFrame).toHaveBeenCalledWith(21);
+
+    hidden = false;
+    act(() => document.dispatchEvent(new Event("visibilitychange")));
+    act(() => vi.advanceTimersByTime(40));
+    expect(requestFrame).toHaveBeenCalledTimes(2);
+
+    act(() => frameCallback?.(150));
+    expect(gl.drawArrays).toHaveBeenCalledTimes(2);
+
+    view.unmount();
+    act(() => vi.advanceTimersByTime(100));
+    expect(requestFrame).toHaveBeenCalledTimes(2);
   });
 });

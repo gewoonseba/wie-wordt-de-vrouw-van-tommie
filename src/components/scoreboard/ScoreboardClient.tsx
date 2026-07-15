@@ -1,29 +1,51 @@
 "use client";
 
-import { Component, type ErrorInfo, type ReactNode } from "react";
+import {
+  Component,
+  type ErrorInfo,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useState
+} from "react";
 import { useQuery } from "convex/react";
 
 import { api } from "../../../convex/_generated/api";
-import { CrtShaderOverlay } from "@/components/scoreboard/CrtShaderOverlay";
+import {
+  CrtBarrelFilterDefs,
+  CrtShaderOverlay
+} from "@/components/scoreboard/CrtShaderOverlay";
 import { MoneyPile } from "@/components/scoreboard/MoneyPile";
+import { ParticipantDetailModal } from "@/components/scoreboard/ParticipantDetailModal";
 import { Podium } from "@/components/scoreboard/Podium";
 import { RankingList } from "@/components/scoreboard/RankingList";
 import { WindowControls } from "@/components/scoreboard/WindowControls";
 import { rankParticipants, selectPodium } from "@/lib/scoreboard";
+import type { ScoreboardParticipant } from "@/lib/scoreboard";
 
-function BroadcastFrame({ children }: { children: ReactNode }) {
+function BroadcastFrame({
+  children,
+  overlay
+}: {
+  children: ReactNode;
+  overlay?: ReactNode;
+}) {
   return (
     <main className="crt-broadcast">
       <div className="crt-cabinet">
         <div className="crt-glass">
-          <div className="crt-desktop-bar" aria-hidden="true">
-            <span className="crt-app-icon">💘</span>
-            <span>TOMMIE.EXE — LIVE SATELLITE FEED</span>
-            <WindowControls />
+          <CrtBarrelFilterDefs />
+          <div className="crt-screen-content">
+            <div className="crt-desktop-bar" aria-hidden="true">
+              <span className="crt-app-icon">💘</span>
+              <span>TOMMIE.EXE — LIVE SATELLITE FEED</span>
+              <WindowControls />
+            </div>
+            {children}
           </div>
-          {children}
           <CrtShaderOverlay />
           <div className="crt-glass-glare" aria-hidden="true" />
+          {overlay}
         </div>
 
         <div className="crt-hardware" aria-hidden="true">
@@ -124,6 +146,26 @@ function DateTelemetry({ eligibleCount }: { eligibleCount: number }) {
 
 function ScoreboardContent() {
   const scoreboard = useQuery(api.scoreboard.get);
+  const [selectedParticipantId, setSelectedParticipantId] =
+    useState<ScoreboardParticipant["_id"] | null>(null);
+  const closeParticipant = useCallback(() => setSelectedParticipantId(null), []);
+
+  useEffect(() => {
+    if (
+      scoreboard !== undefined &&
+      selectedParticipantId !== null &&
+      !scoreboard.participants.some(
+        (participant) => participant._id === selectedParticipantId
+      )
+    ) {
+      const removedParticipantId = selectedParticipantId;
+      queueMicrotask(() => {
+        setSelectedParticipantId((currentParticipantId) =>
+          currentParticipantId === removedParticipantId ? null : currentParticipantId
+        );
+      });
+    }
+  }, [scoreboard, selectedParticipantId]);
 
   if (scoreboard === undefined) {
     return (
@@ -137,9 +179,26 @@ function ScoreboardContent() {
   const rankedParticipants = rankParticipants(scoreboard.participants);
   const podiumParticipants = selectPodium(rankedParticipants);
   const eligibleCount = rankedParticipants.filter((participant) => participant.canDate).length;
+  const selectedParticipant = rankedParticipants.find(
+    (participant) => participant._id === selectedParticipantId
+  );
 
   return (
-    <BroadcastFrame>
+    <BroadcastFrame
+      overlay={
+        selectedParticipant ? (
+          <ParticipantDetailModal
+            participant={selectedParticipant}
+            rank={
+              rankedParticipants.findIndex(
+                (participant) => participant._id === selectedParticipant._id
+              ) + 1
+            }
+            onClose={closeParticipant}
+          />
+        ) : null
+      }
+    >
       <div className="crt-program">
         <div className="crt-sky" aria-hidden="true">
           <span className="crt-laser crt-laser-a" />
@@ -154,9 +213,9 @@ function ScoreboardContent() {
 
         <header className="crt-hero">
           <p className="crt-kicker">LIVE VANUIT HET VRIJGEZELLENFEEST</p>
-          <h1 className="crt-logo" aria-label="Tommie Tracker">
-            <span>TOMMIE</span>
-            <strong>TRACKER</strong>
+          <h1 className="crt-logo" aria-label="Wie Wordt de Vrouw van Tommie">
+            <span>WIE WORDT DE VROUW VAN</span>
+            <strong>TOMMIE</strong>
           </h1>
           <div className="crt-telemetry-strip">
             <span>♥</span>
@@ -176,8 +235,11 @@ function ScoreboardContent() {
           </div>
 
           <div className="crt-main-column">
-            <Podium participants={podiumParticipants} />
-            <RankingList participants={rankedParticipants} />
+            <Podium participants={podiumParticipants} onSelect={setSelectedParticipantId} />
+            <RankingList
+              participants={rankedParticipants}
+              onSelect={setSelectedParticipantId}
+            />
           </div>
 
           <div className="crt-right-column">

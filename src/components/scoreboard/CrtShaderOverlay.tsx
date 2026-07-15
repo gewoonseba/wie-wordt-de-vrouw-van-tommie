@@ -12,6 +12,36 @@ const VERTEX_SHADER = `
   }
 `;
 
+function createRadialDisplacementMap(size: number) {
+  const pixels: string[] = [];
+
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const normalizedX = ((x + 0.5) / size) * 2 - 1;
+      const normalizedY = ((y + 0.5) / size) * 2 - 1;
+      const radiusSquared = normalizedX ** 2 + normalizedY ** 2;
+      const red = Math.round(
+        Math.min(1, Math.max(0, 0.5 + normalizedX * radiusSquared * 0.25)) * 255
+      );
+      const green = Math.round(
+        Math.min(1, Math.max(0, 0.5 + normalizedY * radiusSquared * 0.25)) * 255
+      );
+
+      pixels.push(
+        `<rect x="${x}" y="${y}" width="1" height="1" fill="rgb(${red},${green},0)"/>`
+      );
+    }
+  }
+
+  return `data:image/svg+xml,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+      ${pixels.join("")}
+    </svg>
+  `)}`;
+}
+
+const RADIAL_DISPLACEMENT_MAP = createRadialDisplacementMap(24);
+
 const FRAGMENT_SHADER = `
   precision highp float;
 
@@ -24,7 +54,10 @@ const FRAGMENT_SHADER = `
   }
 
   void main() {
-    vec2 pixel = v_uv * u_resolution;
+    vec2 centered = v_uv * 2.0 - 1.0;
+    float radiusSquared = dot(centered, centered);
+    vec2 curvedUv = 0.5 + 0.5 * centered * (1.0 + radiusSquared * 0.085);
+    vec2 pixel = curvedUv * u_resolution;
     float scan = 0.5 + 0.5 * sin(pixel.y * 3.14159265);
     float triad = mod(floor(pixel.x), 3.0);
     vec3 phosphor = triad < 1.0
@@ -33,24 +66,54 @@ const FRAGMENT_SHADER = `
         ? vec3(0.08, 0.95, 0.45)
         : vec3(0.08, 0.3, 1.0);
 
-    float noise = random(floor(pixel * 0.52) + floor(u_time * 26.0));
-    float trackingY = fract(u_time * 0.075);
-    float tracking = 1.0 - smoothstep(0.0, 0.028, abs(v_uv.y - trackingY));
-    float hardGlitch = step(0.992, random(vec2(floor(u_time * 2.0), floor(pixel.y * 0.02))));
+    float noise = random(floor(pixel * 0.58) + floor(u_time * 34.0));
 
-    vec2 centered = v_uv * 2.0 - 1.0;
-    float edge = 1.0 - smoothstep(0.42, 1.32, dot(centered, centered));
-    float flicker = 0.965 + 0.035 * sin(u_time * 31.0);
+    float trackingY = fract(u_time * 0.11);
+    float tracking = 1.0 - smoothstep(0.0, 0.065, abs(curvedUv.y - trackingY));
+    float trackingCore = 1.0 - smoothstep(0.0, 0.012, abs(curvedUv.y - trackingY));
 
-    vec3 color = phosphor * (0.018 + noise * 0.022);
-    color += vec3(0.2, 1.0, 0.66) * tracking * 0.13;
-    color += vec3(0.95, 0.1, 0.52) * hardGlitch * 0.06;
+    float staticClock = floor(u_time * 1.6);
+    float staticBurst = step(0.94, random(vec2(staticClock, 19.17)));
+    float staticNoise = 0.0;
+    if (staticBurst > 0.5) {
+      staticNoise = random(
+        floor(pixel * vec2(0.72, 0.86)) + vec2(floor(u_time * 79.0), -floor(u_time * 53.0))
+      );
+    }
+
+    float tearClock = floor(u_time * 0.72);
+    float tearEvent = step(0.91, random(vec2(tearClock, 71.4)));
+    float tearY = random(vec2(tearClock, 4.81));
+    float tearBand = (
+      1.0 - smoothstep(0.0, 0.021, abs(curvedUv.y - tearY))
+    ) * tearEvent;
+    float hardGlitch = step(
+      0.975,
+      random(vec2(floor(u_time * 7.0), floor(pixel.y * 0.035)))
+    ) * max(staticBurst, tearEvent);
+
+    float edge = 1.0 - smoothstep(0.42, 1.32, radiusSquared);
+    float lensFringe = smoothstep(0.34, 1.3, radiusSquared);
+    float flicker = 0.93 + 0.07 * sin(u_time * 31.0);
+
+    vec3 color = phosphor * (0.026 + noise * 0.032);
+    color += vec3(0.18, 0.85, 0.55) * tracking * 0.13;
+    color += vec3(0.7, 1.0, 0.88) * trackingCore * 0.24;
+    color += vec3(staticNoise) * staticBurst * 0.34;
+    color += vec3(0.1, 0.9, 1.0) * tearBand * 0.18;
+    color += vec3(1.0, 0.05, 0.52) * hardGlitch * 0.2;
+    color += vec3(0.08, 0.025, 0.13) * lensFringe;
     color *= flicker;
 
-    float darkness = (1.0 - scan) * 0.11;
-    darkness += (1.0 - edge) * 0.28;
-    darkness += hardGlitch * 0.035;
-    float alpha = clamp(darkness + 0.018 + noise * 0.018 + tracking * 0.08, 0.0, 0.42);
+    float darkness = (1.0 - scan) * 0.22;
+    darkness += (1.0 - edge) * 0.34;
+    darkness += hardGlitch * 0.12;
+    darkness += staticBurst * staticNoise * 0.16;
+    float alpha = clamp(
+      darkness + 0.025 + noise * 0.028 + tracking * 0.09 + trackingCore * 0.08,
+      0.0,
+      0.64
+    );
 
     gl_FragColor = vec4(color, alpha);
   }
@@ -176,25 +239,49 @@ export function CrtShaderOverlay() {
     const startedAt = performance.now();
     let lastDrawAt = 0;
     let frame = 0;
+    let timer: number | undefined;
+    let stopped = false;
 
-    const render = (now: number) => {
-      if (!gl) return;
+    const scheduleFrame = () => {
+      if (stopped || document.hidden) return;
 
-      frame = requestAnimationFrame(render);
-
-      if (document.hidden || now - lastDrawAt < TARGET_FRAME_INTERVAL) {
-        return;
-      }
-
-      lastDrawAt = now;
-      gl.uniform1f(timeLocation, (now - startedAt) / 1000);
-      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      if (timer !== undefined) window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        timer = undefined;
+        frame = requestAnimationFrame(render);
+      }, TARGET_FRAME_INTERVAL);
     };
 
+    const render = (now: number) => {
+      if (!gl || stopped) return;
+
+      if (!document.hidden && now - lastDrawAt >= TARGET_FRAME_INTERVAL) {
+        lastDrawAt = now;
+        gl.uniform1f(timeLocation, (now - startedAt) / 1000);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+      }
+
+      scheduleFrame();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        if (timer !== undefined) window.clearTimeout(timer);
+        timer = undefined;
+        cancelAnimationFrame(frame);
+      } else {
+        scheduleFrame();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     frame = requestAnimationFrame(render);
 
     return () => {
+      stopped = true;
       cancelAnimationFrame(frame);
+      if (timer !== undefined) window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       stopResize();
       gl?.deleteBuffer(buffer);
       gl?.deleteProgram(program);
@@ -202,4 +289,41 @@ export function CrtShaderOverlay() {
   }, []);
 
   return <canvas ref={canvasRef} className="crt-shader" aria-hidden="true" />;
+}
+
+export function CrtBarrelFilterDefs() {
+  return (
+    <svg className="crt-filter-defs" aria-hidden="true">
+      <defs>
+        <CrtBarrelFilter id="crt-barrel-warp" scale={34} />
+        <CrtBarrelFilter id="crt-barrel-warp-mobile" scale={15} />
+      </defs>
+    </svg>
+  );
+}
+
+function CrtBarrelFilter({ id, scale }: { id: string; scale: number }) {
+  return (
+    <filter
+      id={id}
+      x="-3%"
+      y="-3%"
+      width="106%"
+      height="106%"
+      colorInterpolationFilters="sRGB"
+    >
+      <feImage
+        href={RADIAL_DISPLACEMENT_MAP}
+        preserveAspectRatio="none"
+        result="barrelMap"
+      />
+      <feDisplacementMap
+        in="SourceGraphic"
+        in2="barrelMap"
+        scale={scale}
+        xChannelSelector="R"
+        yChannelSelector="G"
+      />
+    </filter>
+  );
 }

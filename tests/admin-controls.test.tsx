@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Id } from "../convex/_generated/dataModel";
 import { DateEligibilityControl } from "@/components/admin/DateEligibilityControl";
 import { MoneyAdjustmentForm } from "@/components/admin/MoneyAdjustmentForm";
+import { ParticipantManager } from "@/components/admin/ParticipantManager";
 import { ScoreAdjustmentForm } from "@/components/admin/ScoreAdjustmentForm";
 
 const { useMutationMock } = vi.hoisted(() => ({
@@ -24,13 +25,18 @@ afterEach(() => {
 });
 
 describe("ScoreAdjustmentForm", () => {
-  it("submits the exact score delta and renders the returned total", async () => {
+  it("offers a full set of scoring ranks and restores date eligibility for quick plays", async () => {
     const adjustScore = vi.fn().mockResolvedValue({ points: 47 });
-    useMutationMock.mockReturnValue(adjustScore);
+    const playCard = vi.fn().mockResolvedValue({ points: 50, canDate: true });
+    useMutationMock
+      .mockReturnValueOnce(adjustScore)
+      .mockReturnValueOnce(playCard)
+      .mockReturnValue(vi.fn());
 
     render(
       <ScoreAdjustmentForm
         adminToken="admin-token"
+        canDate={false}
         currentScore={40}
         onSessionExpired={vi.fn()}
         participantId={participantId}
@@ -38,6 +44,45 @@ describe("ScoreAdjustmentForm", () => {
       />
     );
 
+    expect(screen.queryByLabelText("Score adjustment")).toBeNull();
+    expect(screen.queryByRole("checkbox", { name: "May date Tommie" })).toBeNull();
+    for (const value of [2, 3, 4, 5, 6, 7, 8, 9, 10]) {
+      expect(screen.getByRole("button", { name: `Play ${value} for ${value} points` })).toBeTruthy();
+    }
+    for (const rank of ["ace", "jack", "queen", "king"]) {
+      expect(screen.getByRole("button", { name: `Play ${rank} for 10 points` })).toBeTruthy();
+    }
+
+    fireEvent.click(screen.getByRole("button", { name: "Play jack for 10 points" }));
+
+    await waitFor(() => {
+      expect(playCard).toHaveBeenCalledWith({
+        adminToken: "admin-token",
+        participantId,
+        points: 10
+      });
+    });
+    expect(adjustScore).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Saved:/)).toBeNull();
+  });
+
+  it("keeps exact score and date controls inside manual correction", async () => {
+    const adjustScore = vi.fn().mockResolvedValue({ points: 47 });
+    useMutationMock.mockReturnValue(adjustScore);
+
+    render(
+      <ScoreAdjustmentForm
+        adminToken="admin-token"
+        canDate={false}
+        currentScore={40}
+        onSessionExpired={vi.fn()}
+        participantId={participantId}
+        participantName="Noor"
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Manual correction" }));
+    expect(screen.getByRole("checkbox", { name: "May date Tommie" })).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Score adjustment"), {
       target: { value: "+7" }
     });
@@ -50,22 +95,23 @@ describe("ScoreAdjustmentForm", () => {
         delta: 7
       });
     });
-    expect(await screen.findByText("Saved: 47 points.")).toBeTruthy();
-    expect((screen.getByLabelText("Score adjustment") as HTMLInputElement).value).toBe("");
+    expect(screen.queryByText(/Saved:/)).toBeNull();
+    expect(screen.queryByLabelText("Score adjustment")).toBeNull();
   });
 
-  it("allows only one in-flight submission", async () => {
-    let resolveMutation!: (result: { points: number }) => void;
-    const adjustScore = vi.fn().mockReturnValue(
-      new Promise<{ points: number }>((resolve) => {
+  it("allows only one in-flight quick-card submission", async () => {
+    let resolveMutation!: (result: { points: number; canDate: true }) => void;
+    const playCard = vi.fn().mockReturnValue(
+      new Promise<{ points: number; canDate: true }>((resolve) => {
         resolveMutation = resolve;
       })
     );
-    useMutationMock.mockReturnValue(adjustScore);
+    useMutationMock.mockReturnValueOnce(vi.fn()).mockReturnValueOnce(playCard).mockReturnValue(vi.fn());
 
     render(
       <ScoreAdjustmentForm
         adminToken="admin-token"
+        canDate={false}
         currentScore={40}
         onSessionExpired={vi.fn()}
         participantId={participantId}
@@ -73,19 +119,14 @@ describe("ScoreAdjustmentForm", () => {
       />
     );
 
-    fireEvent.change(screen.getByLabelText("Score adjustment"), {
-      target: { value: "5" }
-    });
-    const form = screen.getByRole("button", { name: "Adjust Noor" }).closest("form");
-    if (!form) throw new Error("Expected score form.");
+    fireEvent.click(screen.getByRole("button", { name: "Play 2 for 2 points" }));
+    fireEvent.click(screen.getByRole("button", { name: "Play 3 for 3 points" }));
 
-    fireEvent.submit(form);
-    fireEvent.submit(form);
+    expect(playCard).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Play 2 for 2 points" }).getAttribute("aria-disabled"))
+      .toBe("true");
 
-    expect(adjustScore).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("button", { name: "Saving…" }).hasAttribute("disabled")).toBe(true);
-
-    await act(async () => resolveMutation({ points: 45 }));
+    await act(async () => resolveMutation({ points: 42, canDate: true }));
   });
 
   it("shows backend errors and delegates expired sessions", async () => {
@@ -99,6 +140,7 @@ describe("ScoreAdjustmentForm", () => {
     const view = render(
       <ScoreAdjustmentForm
         adminToken="admin-token"
+        canDate={false}
         currentScore={40}
         onSessionExpired={onSessionExpired}
         participantId={participantId}
@@ -106,6 +148,7 @@ describe("ScoreAdjustmentForm", () => {
       />
     );
 
+    fireEvent.click(screen.getByRole("button", { name: "Manual correction" }));
     const input = screen.getByLabelText("Score adjustment");
     fireEvent.change(input, { target: { value: "5" } });
     fireEvent.submit(input.closest("form")!);
@@ -115,6 +158,42 @@ describe("ScoreAdjustmentForm", () => {
     fireEvent.submit(input.closest("form")!);
     await waitFor(() => expect(onSessionExpired).toHaveBeenCalledTimes(1));
     view.unmount();
+  });
+
+  it("keeps manual controls open while a date update is pending", async () => {
+    let rejectDate!: (error: Error) => void;
+    const setDateEligibility = vi.fn().mockReturnValue(
+      new Promise<never>((_resolve, reject) => {
+        rejectDate = reject;
+      })
+    );
+    useMutationMock.mockReturnValue(setDateEligibility);
+
+    render(
+      <ScoreAdjustmentForm
+        adminToken="admin-token"
+        canDate={false}
+        currentScore={40}
+        onSessionExpired={vi.fn()}
+        participantId={participantId}
+        participantName="Noor"
+      />
+    );
+
+    const manualButton = screen.getByRole("button", { name: "Manual correction" });
+    fireEvent.click(manualButton);
+    fireEvent.click(screen.getByRole("checkbox", { name: "May date Tommie" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Manual correction" }).hasAttribute("disabled"))
+        .toBe(true);
+    });
+    expect(screen.getByRole("checkbox", { name: "May date Tommie" })).toBeTruthy();
+
+    await act(async () => rejectDate(new Error("Date service unavailable.")));
+    expect(await screen.findByText("Date service unavailable.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Manual correction" }).hasAttribute("disabled"))
+      .toBe(false);
   });
 });
 
@@ -148,10 +227,11 @@ describe("other admin controls", () => {
         canDate: false
       });
     });
+    expect(screen.queryByText(/Saved:/)).toBeNull();
   });
 
-  it("submits the exact money delta", async () => {
-    const adjustMoney = vi.fn().mockResolvedValue({ tommieMoney: 1_750 });
+  it("offers four fixed money adjustments and submits the selected delta", async () => {
+    const adjustMoney = vi.fn().mockResolvedValue({ tommieMoney: 2_000 });
     useMutationMock.mockReturnValue(adjustMoney);
 
     render(
@@ -162,17 +242,209 @@ describe("other admin controls", () => {
       />
     );
 
-    fireEvent.change(screen.getByLabelText("Money adjustment"), {
-      target: { value: "+250" }
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Adjust pot" }));
+    expect(screen.getByRole("button", { name: "− €1.000" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "− €500" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "+ €500" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "+ €1.000" }));
 
     await waitFor(() => {
       expect(adjustMoney).toHaveBeenCalledWith({
         adminToken: "admin-token",
-        delta: 250
+        delta: 1_000
       });
     });
-    expect(await screen.findByText(/Saved:.*1\.750/)).toBeTruthy();
+    expect(screen.queryByText(/Saved:/)).toBeNull();
+  });
+
+  it("allows only one in-flight money adjustment", async () => {
+    let resolveMutation!: (result: { tommieMoney: number }) => void;
+    const adjustMoney = vi.fn().mockReturnValue(
+      new Promise<{ tommieMoney: number }>((resolve) => {
+        resolveMutation = resolve;
+      })
+    );
+    useMutationMock.mockReturnValue(adjustMoney);
+
+    render(
+      <MoneyAdjustmentForm
+        adminToken="admin-token"
+        currentTotal={1_500}
+        onSessionExpired={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "+ €500" }));
+
+    const buttons = screen.getAllByRole("button");
+    expect(buttons).toHaveLength(4);
+    expect(buttons.every((button) => !button.hasAttribute("disabled"))).toBe(true);
+    expect(buttons.every((button) => button.getAttribute("aria-disabled") === "true")).toBe(true);
+    expect(screen.getByRole("button", { name: "+ €500" })).toBeTruthy();
+    expect(screen.queryByRole("status")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "+ €500" }));
+    fireEvent.click(screen.getByRole("button", { name: "+ €1.000" }));
+    expect(adjustMoney).toHaveBeenCalledTimes(1);
+
+    await act(async () => resolveMutation({ tommieMoney: 2_000 }));
+    await waitFor(() => {
+      expect(screen.getAllByRole("button").every((button) => button.getAttribute("aria-disabled") === "false")).toBe(true);
+    });
+    expect(screen.queryByText(/Saved:/)).toBeNull();
+  });
+
+  it("shows money errors, re-enables controls, and delegates expired sessions", async () => {
+    const onSessionExpired = vi.fn();
+    const adjustMoney = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("Money service unavailable."))
+      .mockRejectedValueOnce(new Error("Admin session is missing or expired."));
+    useMutationMock.mockReturnValue(adjustMoney);
+
+    render(
+      <MoneyAdjustmentForm
+        adminToken="admin-token"
+        currentTotal={1_500}
+        onSessionExpired={onSessionExpired}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "+ €500" }));
+    expect(await screen.findByText("Money service unavailable.")).toBeTruthy();
+    expect(screen.getAllByRole("button").every((button) => !button.hasAttribute("disabled"))).toBe(true);
+
+    fireEvent.click(screen.getByRole("button", { name: "− €500" }));
+    await waitFor(() => expect(onSessionExpired).toHaveBeenCalledTimes(1));
+  });
+
+  it("disables money corrections that would make the pot negative", () => {
+    const adjustMoney = vi.fn();
+    useMutationMock.mockReturnValue(adjustMoney);
+
+    render(
+      <MoneyAdjustmentForm
+        adminToken="admin-token"
+        currentTotal={400}
+        onSessionExpired={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "− €1.000" }).hasAttribute("disabled")).toBe(true);
+    expect(screen.getByRole("button", { name: "− €500" }).hasAttribute("disabled")).toBe(true);
+    expect(screen.getByRole("button", { name: "+ €500" }).hasAttribute("disabled")).toBe(false);
+    expect(adjustMoney).not.toHaveBeenCalled();
+  });
+
+  it("keeps participant profile fields in an edit dialog and closes after saving", async () => {
+    let resolveUpdate!: () => void;
+    const createParticipant = vi.fn();
+    const updateParticipant = vi.fn().mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolveUpdate = resolve;
+      })
+    );
+    const generateUploadUrl = vi.fn();
+    const otherMutation = vi.fn();
+    useMutationMock
+      .mockReturnValueOnce(createParticipant)
+      .mockReturnValueOnce(updateParticipant)
+      .mockReturnValueOnce(generateUploadUrl)
+      .mockReturnValue(otherMutation);
+
+    render(
+      <ParticipantManager
+        adminToken="admin-token"
+        onSessionExpired={vi.fn()}
+        participants={[
+          {
+            _id: participantId,
+            canDate: true,
+            isActive: true,
+            name: "Noor",
+            photoUrl: null,
+            points: 40
+          }
+        ]}
+      />
+    );
+
+    const card = screen.getByRole("heading", { name: "Noor" }).closest('[data-slot="card"]');
+    if (!(card instanceof HTMLElement)) throw new Error("Expected one unified participant card.");
+    expect(within(card).getByRole("button", { name: "Play 2 for 2 points" })).toBeTruthy();
+    expect(within(card).queryByRole("checkbox", { name: "May date Tommie" })).toBeNull();
+    fireEvent.click(within(card).getByRole("button", { name: "Manual correction" }));
+    expect(within(card).getByRole("checkbox", { name: "May date Tommie" })).toBeTruthy();
+    expect(within(card).queryByLabelText("Naam")).toBeNull();
+    expect(screen.queryByText("Op scorebord tonen")).toBeNull();
+
+    fireEvent.click(within(card).getByRole("button", { name: "Edit Noor" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Edit Noor" });
+    const nameInput = within(dialog).getByLabelText("Naam") as HTMLInputElement;
+    expect(nameInput.value).toBe("Noor");
+    expect(within(dialog).getByText("Op scorebord tonen")).toBeTruthy();
+
+    fireEvent.change(nameInput, { target: { value: "Temporary" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Close edit dialog" }));
+    fireEvent.click(within(card).getByRole("button", { name: "Edit Noor" }));
+
+    const reopenedDialog = screen.getByRole("dialog", { name: "Edit Noor" });
+    expect((within(reopenedDialog).getByLabelText("Naam") as HTMLInputElement).value).toBe("Noor");
+    fireEvent.change(within(reopenedDialog).getByLabelText("Naam"), {
+      target: { value: "Noor Updated" }
+    });
+    fireEvent.click(within(reopenedDialog).getByRole("button", { name: "Profiel opslaan" }));
+
+    await waitFor(() => {
+      expect(updateParticipant).toHaveBeenCalledWith({
+        adminToken: "admin-token",
+        participantId,
+        name: "Noor Updated",
+        isActive: true,
+        photoStorageId: undefined
+      });
+    });
+    expect(
+      within(reopenedDialog).getByRole("button", { name: "Close edit dialog" }).hasAttribute("disabled")
+    ).toBe(true);
+    expect(screen.getByRole("dialog", { name: "Edit Noor" })).toBeTruthy();
+
+    await act(async () => resolveUpdate());
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Edit Noor" })).toBeNull());
+  });
+
+  it("shows profile save errors inside the open edit dialog", async () => {
+    const updateParticipant = vi.fn().mockRejectedValue(new Error("Profile service unavailable."));
+    useMutationMock
+      .mockReturnValueOnce(vi.fn())
+      .mockReturnValueOnce(updateParticipant)
+      .mockReturnValueOnce(vi.fn())
+      .mockReturnValue(vi.fn());
+
+    render(
+      <ParticipantManager
+        adminToken="admin-token"
+        onSessionExpired={vi.fn()}
+        participants={[
+          {
+            _id: participantId,
+            canDate: true,
+            isActive: true,
+            name: "Noor",
+            photoUrl: null,
+            points: 40
+          }
+        ]}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit Noor" }));
+    const dialog = screen.getByRole("dialog", { name: "Edit Noor" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Profiel opslaan" }));
+
+    expect(await within(dialog).findByText("Profile service unavailable.")).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: "Edit Noor" })).toBeTruthy();
+    expect(within(dialog).getByRole("button", { name: "Close edit dialog" }).hasAttribute("disabled"))
+      .toBe(false);
   });
 });

@@ -1,24 +1,26 @@
 "use client";
 
 import { useState, type ChangeEvent, type FormEvent } from "react";
+import { Dialog } from "@base-ui/react/dialog";
+import { IconEdit, IconX } from "@tabler/icons-react";
 import { useMutation } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
 
 import type { Id } from "../../../convex/_generated/dataModel";
 import { api } from "../../../convex/_generated/api";
+import { ScoreAdjustmentForm } from "@/components/admin/ScoreAdjustmentForm";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { isAdminSessionExpired } from "@/lib/admin-session";
 import { getInitials } from "@/lib/text";
 
-type Participant = {
-  _id: Id<"participants">;
-  name: string;
-  photoUrl: string | null;
-  isActive: boolean;
-};
+type Participant = FunctionReturnType<typeof api.participants.listForAdmin>[number];
 
 type ParticipantManagerProps = {
   adminToken: string;
@@ -56,16 +58,17 @@ export function ParticipantManager({
   const [error, setError] = useState<string | null>(null);
 
   function handleError(error: unknown) {
-    const message = error instanceof Error ? error.message : "Could not save participant.";
-    if (message.includes("Admin session is missing or expired")) {
+    if (isAdminSessionExpired(error)) {
       onSessionExpired();
       return;
     }
+    const message = error instanceof Error ? error.message : "Could not save participant.";
     setError(message);
   }
 
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
     setError(null);
     setIsCreating(true);
     try {
@@ -79,7 +82,7 @@ export function ParticipantManager({
       await createParticipant({ adminToken, name: newName, photoStorageId });
       setNewName("");
       setNewPhoto(null);
-      event.currentTarget.reset();
+      form.reset();
     } catch (error) {
       handleError(error);
     } finally {
@@ -91,10 +94,10 @@ export function ParticipantManager({
     <section aria-labelledby="roster-management" className="flex flex-col gap-4">
       <div>
         <h2 className="text-xl font-semibold tracking-tight" id="roster-management">
-          Deelnemers beheren
+          Deelnemers
         </h2>
         <p className="text-sm text-muted-foreground">
-          Voeg deelnemers toe, wijzig hun naam of foto en bepaal wie op het scorebord staat.
+          Beheer profiel, score, date-status en zichtbaarheid per deelnemer.
         </p>
       </div>
 
@@ -132,13 +135,13 @@ export function ParticipantManager({
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="flex flex-col gap-4">
         {participants.map((participant) => (
           <ParticipantEditor
             adminToken={adminToken}
             generateUploadUrl={generateUploadUrl}
             key={participant._id}
-            onError={handleError}
+            onSessionExpired={onSessionExpired}
             participant={participant}
             updateParticipant={updateParticipant}
           />
@@ -151,13 +154,13 @@ export function ParticipantManager({
 function ParticipantEditor({
   adminToken,
   generateUploadUrl,
-  onError,
+  onSessionExpired,
   participant,
   updateParticipant
 }: {
   adminToken: string;
   generateUploadUrl: (args: { adminToken: string }) => Promise<string>;
-  onError: (error: unknown) => void;
+  onSessionExpired: () => void;
   participant: Participant;
   updateParticipant: (args: {
     adminToken: string;
@@ -171,9 +174,13 @@ function ParticipantEditor({
   const [isActive, setIsActive] = useState(participant.isActive);
   const [photo, setPhoto] = useState<File | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isEditOpen, setEditOpen] = useState(false);
+  const [editError, setEditError] = useState("");
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
+    setEditError("");
     setIsSaving(true);
     try {
       const photoStorageId = photo
@@ -187,9 +194,14 @@ function ParticipantEditor({
         photoStorageId
       });
       setPhoto(null);
-      event.currentTarget.reset();
+      form.reset();
+      setEditOpen(false);
     } catch (error) {
-      onError(error);
+      if (isAdminSessionExpired(error)) {
+        onSessionExpired();
+        return;
+      }
+      setEditError(error instanceof Error ? error.message : "Could not save participant.");
     } finally {
       setIsSaving(false);
     }
@@ -199,54 +211,115 @@ function ParticipantEditor({
     setPhoto(event.target.files?.[0] ?? null);
   }
 
+  function changeEditOpen(open: boolean) {
+    if (isSaving) return;
+    setEditOpen(open);
+    if (open) {
+      setName(participant.name);
+      setIsActive(participant.isActive);
+    }
+    setEditError("");
+    setPhoto(null);
+  }
+
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-3">
-          <Avatar size="lg">
-            {participant.photoUrl ? <AvatarImage alt="" src={participant.photoUrl} /> : null}
-            <AvatarFallback>{getInitials(participant.name)}</AvatarFallback>
-          </Avatar>
-          <div>
-            <CardTitle as="h3">{participant.name}</CardTitle>
-            <CardDescription>{participant.isActive ? "Actief" : "Verborgen"}</CardDescription>
+    <Dialog.Root onOpenChange={changeEditOpen} open={isEditOpen}>
+      <Card>
+        <CardHeader>
+          <div className="flex flex-wrap items-center gap-3">
+            <Avatar size="lg">
+              {participant.photoUrl ? <AvatarImage alt="" src={participant.photoUrl} /> : null}
+              <AvatarFallback>{getInitials(participant.name)}</AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <CardTitle as="h3" className="truncate">{participant.name}</CardTitle>
+              <CardDescription>{participant.points} points</CardDescription>
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <Badge variant={participant.isActive ? "secondary" : "outline"}>
+                {participant.isActive ? "Actief" : "Verborgen"}
+              </Badge>
+              <Badge variant={participant.canDate ? "default" : "secondary"}>
+                {participant.canDate ? "Date allowed" : "No date"}
+              </Badge>
+              <Dialog.Trigger
+                render={<Button size="icon-xs" type="button" variant="ghost" />}
+              >
+                <IconEdit />
+                <span className="sr-only">Edit {participant.name}</span>
+              </Dialog.Trigger>
+            </div>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <form className="grid gap-4" onSubmit={save}>
-          <div className="grid gap-2">
-            <Label htmlFor={`participant-name-${participant._id}`}>Naam</Label>
-            <Input
-              id={`participant-name-${participant._id}`}
-              maxLength={80}
-              onChange={(event) => setName(event.target.value)}
-              required
-              value={name}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor={`participant-photo-${participant._id}`}>Vervang foto</Label>
-            <Input
-              accept="image/*"
-              id={`participant-photo-${participant._id}`}
-              onChange={changePhoto}
-              type="file"
-            />
-          </div>
-          <Label className="flex items-center gap-2" htmlFor={`participant-active-${participant._id}`}>
-            <Checkbox
-              checked={isActive}
-              id={`participant-active-${participant._id}`}
-              onCheckedChange={(checked) => setIsActive(checked === true)}
-            />
-            Op scorebord tonen
-          </Label>
-          <Button disabled={isSaving} type="submit" variant="outline">
-            {isSaving ? "Opslaan…" : "Wijzigingen opslaan"}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+        </CardHeader>
+        <CardContent>
+          <ScoreAdjustmentForm
+            adminToken={adminToken}
+            canDate={participant.canDate}
+            currentScore={participant.points}
+            onSessionExpired={onSessionExpired}
+            participantId={participant._id}
+            participantName={participant.name}
+          />
+        </CardContent>
+      </Card>
+
+      <Dialog.Portal>
+        <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/60 transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0" />
+        <Dialog.Viewport className="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4">
+          <Dialog.Popup className="relative grid w-full max-w-md gap-5 rounded-4xl bg-card p-6 text-card-foreground shadow-2xl ring-1 ring-foreground/10 transition-[scale,opacity] duration-150 data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0">
+            <div className="pr-10">
+              <Dialog.Title className="font-heading text-lg font-semibold">
+                Edit {participant.name}
+              </Dialog.Title>
+              <Dialog.Description className="text-sm text-muted-foreground">
+                Update profile details and scoreboard visibility.
+              </Dialog.Description>
+            </div>
+            <Dialog.Close
+              aria-label="Close edit dialog"
+              className="absolute right-4 top-4"
+              disabled={isSaving}
+              render={<Button size="icon-sm" type="button" variant="ghost" />}
+            >
+              <IconX />
+            </Dialog.Close>
+
+            <form className="grid content-start gap-4" onSubmit={save}>
+              <div className="grid gap-2">
+                <Label htmlFor={`participant-name-${participant._id}`}>Naam</Label>
+                <Input
+                  id={`participant-name-${participant._id}`}
+                  maxLength={80}
+                  onChange={(event) => setName(event.target.value)}
+                  required
+                  value={name}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor={`participant-photo-${participant._id}`}>Vervang foto</Label>
+                <Input
+                  accept="image/*"
+                  id={`participant-photo-${participant._id}`}
+                  onChange={changePhoto}
+                  type="file"
+                />
+              </div>
+              <Label className="flex items-center gap-2" htmlFor={`participant-active-${participant._id}`}>
+                <Checkbox
+                  checked={isActive}
+                  id={`participant-active-${participant._id}`}
+                  onCheckedChange={(checked) => setIsActive(checked === true)}
+                />
+                Op scorebord tonen
+              </Label>
+              <Button disabled={isSaving} type="submit">
+                {isSaving ? "Opslaan…" : "Profiel opslaan"}
+              </Button>
+              {editError ? <FieldError>{editError}</FieldError> : null}
+            </form>
+          </Dialog.Popup>
+        </Dialog.Viewport>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }

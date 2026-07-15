@@ -1,14 +1,12 @@
 "use client";
 
 import { useMutation } from "convex/react";
-import { FormEvent, useState } from "react";
+import { useRef, useState } from "react";
 
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+import { FieldError } from "@/components/ui/field";
 import { isAdminSessionExpired } from "@/lib/admin-session";
-import { parseAdjustment, projectedTotal } from "@/lib/adjustments";
 import { formatEuro } from "@/lib/scoreboard";
 
 type MoneyAdjustmentFormProps = {
@@ -17,32 +15,27 @@ type MoneyAdjustmentFormProps = {
   onSessionExpired: () => void;
 };
 
+const MONEY_ADJUSTMENTS = [-1_000, -500, 500, 1_000] as const;
+
+function formatAdjustment(delta: number) {
+  const amount = formatEuro(Math.abs(delta)).replace(/\s/g, "");
+  return `${delta < 0 ? "−" : "+"} ${amount}`;
+}
+
 export function MoneyAdjustmentForm({ adminToken, currentTotal, onSessionExpired }: MoneyAdjustmentFormProps) {
   const adjustMoney = useMutation(api.trackerAdmin.adjustMoney);
-  const [input, setInput] = useState("");
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [isSubmitting, setSubmitting] = useState(false);
-  const projection = projectedTotal(currentTotal, input);
+  const isSubmittingRef = useRef(false);
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (isSubmitting) return;
-
-    const parsed = parseAdjustment(input);
-    if (parsed.value === null) {
-      setError(parsed.error);
-      setSuccess("");
-      return;
-    }
+  async function applyAdjustment(delta: number) {
+    if (isSubmittingRef.current || currentTotal + delta < 0) return;
 
     setError("");
-    setSuccess("");
+    isSubmittingRef.current = true;
     setSubmitting(true);
     try {
-      const result = await adjustMoney({ adminToken, delta: parsed.value });
-      setInput("");
-      setSuccess(`Saved: ${formatEuro(result.tommieMoney)}.`);
+      await adjustMoney({ adminToken, delta });
     } catch (caught) {
       if (isAdminSessionExpired(caught)) {
         onSessionExpired();
@@ -51,39 +44,29 @@ export function MoneyAdjustmentForm({ adminToken, currentTotal, onSessionExpired
       const message = caught instanceof Error ? caught.message : "Money adjustment failed.";
       setError(message);
     } finally {
+      isSubmittingRef.current = false;
       setSubmitting(false);
     }
   }
 
   return (
-    <form onSubmit={onSubmit}>
-      <FieldGroup className="gap-3">
-        <Field data-invalid={!!error}>
-          <FieldLabel htmlFor="money-adjustment">Money adjustment</FieldLabel>
-          <Input
-            aria-invalid={!!error}
-            disabled={isSubmitting}
-            id="money-adjustment"
-            inputMode="numeric"
-            onChange={(event) => {
-              setInput(event.target.value);
-              setError("");
-              setSuccess("");
-            }}
-            placeholder="+500 or -100"
-            value={input}
-          />
-          <FieldDescription>
-            Current: {formatEuro(currentTotal)}
-            {projection === null ? "" : ` · Projected: ${formatEuro(projection)}`}
-          </FieldDescription>
-          {error ? <FieldError>{error}</FieldError> : null}
-        </Field>
-        <Button disabled={isSubmitting} type="submit">
-          {isSubmitting ? "Saving…" : "Adjust pot"}
-        </Button>
-        {success ? <p aria-live="polite" className="text-sm text-muted-foreground">{success}</p> : null}
-      </FieldGroup>
-    </form>
+    <div className="grid gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {MONEY_ADJUSTMENTS.map((delta) => (
+          <Button
+            aria-disabled={isSubmitting || currentTotal + delta < 0}
+            disabled={currentTotal + delta < 0}
+            key={delta}
+            onClick={() => void applyAdjustment(delta)}
+            type="button"
+            variant={delta < 0 ? "outline" : "default"}
+          >
+            {formatAdjustment(delta)}
+          </Button>
+        ))}
+      </div>
+      <p className="text-sm text-muted-foreground">Current: {formatEuro(currentTotal)}</p>
+      {error ? <FieldError>{error}</FieldError> : null}
+    </div>
   );
 }

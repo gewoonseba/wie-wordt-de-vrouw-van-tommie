@@ -69,6 +69,9 @@ describe("ScoreboardClient", () => {
     expect(screen.queryByText("Elke laag staat voor € 500.")).toBeNull();
     expect(screen.getByRole("button", { name: "Start de discobal" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Trek een jurykaart" })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Activeer de cursed cursor" })
+    ).toBeTruthy();
     expect(screen.getByText("Tommie-ometer")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Start de discobal" }));
@@ -78,6 +81,11 @@ describe("ScoreboardClient", () => {
     expect(
       screen.getByText("De jury wil even kwijt: charisma telt dubbel na 23:00.")
     ).toBeTruthy();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Activeer de cursed cursor" })
+    );
+    expect(screen.getByRole("button", { name: "Red de cursor" })).toBeTruthy();
 
     queryResult = {
       ...queryResult,

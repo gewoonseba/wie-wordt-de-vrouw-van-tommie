@@ -22,6 +22,14 @@ const JURY_CARDS = [
 
 const CONFETTI = ["✦", "✹", "♥", "☻", "✿", "★", "⚡", "◒", "☄"];
 const KONAMI = ["ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight", "b", "a"];
+const CURSOR_SPARKS = ["🪩", "💘", "🍟", "✨", "🦄", "💥"];
+
+type CursorSpark = {
+  id: number;
+  x: number;
+  y: number;
+  emoji: string;
+};
 
 export function ScoreboardChaos({
   participants,
@@ -32,11 +40,16 @@ export function ScoreboardChaos({
 }) {
   const [isDisco, setIsDisco] = useState(false);
   const [isTurbo, setIsTurbo] = useState(false);
+  const [isCursorCursed, setIsCursorCursed] = useState(false);
   const [juryCardIndex, setJuryCardIndex] = useState<number | null>(null);
   const [titleTaps, setTitleTaps] = useState(0);
   const [announcement, setAnnouncement] = useState("");
+  const [cursorPosition, setCursorPosition] = useState({ x: -100, y: -100 });
+  const [cursorTrail, setCursorTrail] = useState<CursorSpark[]>([]);
   const previousScores = useRef<Map<string, number> | null>(null);
   const konamiProgress = useRef(0);
+  const lastCursorTrail = useRef(0);
+  const nextCursorSparkId = useRef(0);
 
   const leader = participants[0];
   const tommieMeter = useMemo(() => {
@@ -83,6 +96,40 @@ export function ScoreboardChaos({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  useEffect(() => {
+    if (!isCursorCursed) return;
+
+    const addCursorSpark = (x: number, y: number) => {
+      const id = nextCursorSparkId.current;
+      nextCursorSparkId.current += 1;
+      setCursorTrail((trail) => [
+        ...trail.slice(-11),
+        { id, x, y, emoji: CURSOR_SPARKS[id % CURSOR_SPARKS.length] }
+      ]);
+    };
+
+    const handlePointerMove = (event: PointerEvent) => {
+      setCursorPosition({ x: event.clientX, y: event.clientY });
+      const now = performance.now();
+      if (now - lastCursorTrail.current > 55) {
+        lastCursorTrail.current = now;
+        addCursorSpark(event.clientX, event.clientY);
+      }
+    };
+
+    const handlePointerDown = (event: PointerEvent) => {
+      addCursorSpark(event.clientX, event.clientY);
+      setIsTurbo(true);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [isCursorCursed]);
+
   const startDisco = () => {
     setIsDisco((active) => !active);
     setIsTurbo(true);
@@ -92,6 +139,18 @@ export function ScoreboardChaos({
   const drawJuryCard = () => {
     setJuryCardIndex((index) => (index === null ? 0 : (index + 1) % JURY_CARDS.length));
     setIsTurbo(true);
+  };
+
+  const toggleCursorChaos = () => {
+    if (isCursorCursed) {
+      setCursorTrail([]);
+    }
+    setIsCursorCursed((active) => !active);
+    setAnnouncement(
+      isCursorCursed
+        ? "Cursor gered. Hij gaat weer normaal doen. Voorlopig."
+        : "Cursed cursor geactiveerd. Klikken is nu een levensstijl."
+    );
   };
 
   const unlockTapSecret = () => {
@@ -116,6 +175,25 @@ export function ScoreboardChaos({
           ))}
         </div>
       ) : null}
+      {isCursorCursed ? (
+        <div className="scoreboard-cursor-layer" aria-hidden="true">
+          {cursorTrail.map((spark) => (
+            <span
+              key={spark.id}
+              className="scoreboard-cursor-spark"
+              style={{ transform: `translate3d(${spark.x}px, ${spark.y}px, 0)` }}
+            >
+              {spark.emoji}
+            </span>
+          ))}
+          <span
+            className="scoreboard-cursor"
+            style={{ transform: `translate3d(${cursorPosition.x}px, ${cursorPosition.y}px, 0)` }}
+          >
+            🪩
+          </span>
+        </div>
+      ) : null}
 
       <section className={isDisco ? "scoreboard-hero scoreboard-hero--disco" : "scoreboard-hero"} aria-label="Chaos bedieningspaneel">
         <div className="scoreboard-chaos-console">
@@ -129,6 +207,14 @@ export function ScoreboardChaos({
             </button>
             <button className="scoreboard-action scoreboard-action--secondary" type="button" onClick={drawJuryCard}>
               Trek een jurykaart
+            </button>
+            <button
+              className="scoreboard-action scoreboard-action--cursor"
+              type="button"
+              onClick={toggleCursorChaos}
+              aria-pressed={isCursorCursed}
+            >
+              {isCursorCursed ? "Red de cursor" : "Activeer de cursed cursor"}
             </button>
           </div>
           <p className="min-h-5 text-sm font-medium text-primary" aria-live="polite">

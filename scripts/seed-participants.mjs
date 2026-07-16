@@ -27,10 +27,21 @@ const roster = [
   ["Vinny", "vinny", "vinny.png", 85, false]
 ];
 
+const deploymentArgs = process.env.CONVEX_DEPLOYMENT
+  ? ["--deployment", process.env.CONVEX_DEPLOYMENT]
+  : ["--prod"];
+const requestedSeedKeys = process.env.PARTICIPANT_SEED_KEYS
+  ?.split(",")
+  .map((seedKey) => seedKey.trim().toLowerCase())
+  .filter(Boolean);
+const rosterToSeed = requestedSeedKeys
+  ? roster.filter(([, seedKey]) => requestedSeedKeys.includes(seedKey))
+  : roster;
+
 function run(functionName, args) {
   const result = execFileSync(
     "npx",
-    ["convex", "run", functionName, JSON.stringify(args), "--prod"],
+    ["convex", "run", functionName, JSON.stringify(args), ...deploymentArgs],
     { encoding: "utf8", stdio: ["inherit", "pipe", "inherit"] }
   ).trim();
   return JSON.parse(result);
@@ -53,7 +64,7 @@ const adminToken = randomBytes(32).toString("hex");
 run("authTokens:login", { passcode, sessionToken: adminToken });
 
 try {
-  for (const [name, seedKey, filename, initialPoints, initialCanDate] of roster) {
+  for (const [name, seedKey, filename, initialPoints, initialCanDate] of rosterToSeed) {
     const filePath = resolve(sourceDirectory, filename);
     const photo = await readFile(filePath);
     const uploadUrl = run("participants:generatePhotoUploadUrl", { adminToken });

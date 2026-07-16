@@ -8,7 +8,9 @@ import type { FunctionReturnType } from "convex/server";
 
 import type { Id } from "../../../convex/_generated/dataModel";
 import { api } from "../../../convex/_generated/api";
+import { DateCompletedButton } from "@/components/admin/DateCompletedButton";
 import { ScoreAdjustmentForm } from "@/components/admin/ScoreAdjustmentForm";
+import { useDateEligibilityMutation } from "@/components/admin/useDateEligibilityMutation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -170,6 +172,11 @@ function ParticipantEditor({
     photoStorageId?: Id<"_storage">;
   }) => Promise<unknown>;
 }) {
+  const dateEligibility = useDateEligibilityMutation({
+    adminToken,
+    onSessionExpired,
+    participantId: participant._id
+  });
   const [name, setName] = useState(participant.name);
   const [isActive, setIsActive] = useState(participant.isActive);
   const [photo, setPhoto] = useState<File | null>(null);
@@ -242,6 +249,11 @@ function ParticipantEditor({
               <Badge variant={participant.canDate ? "default" : "secondary"}>
                 {participant.canDate ? "Date allowed" : "No date"}
               </Badge>
+              <DateCompletedButton
+                canDate={participant.canDate}
+                dateEligibility={dateEligibility}
+                participantName={participant.name}
+              />
               <Dialog.Trigger
                 render={<Button size="icon-xs" type="button" variant="ghost" />}
               >
@@ -256,6 +268,7 @@ function ParticipantEditor({
             adminToken={adminToken}
             canDate={participant.canDate}
             currentScore={participant.points}
+            dateEligibility={dateEligibility}
             onSessionExpired={onSessionExpired}
             participantId={participant._id}
             participantName={participant.name}

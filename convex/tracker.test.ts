@@ -219,7 +219,60 @@ describe("participant roster", () => {
 });
 
 describe("admin tracker mutations", () => {
-  it("restores seeded values and clears custom participant state", async () => {
+  it("starts a new game with zero totals and every date flag enabled", async () => {
+    const t = createTest();
+    const token = "admin-session";
+    await seedAdminSession(t, token);
+    await t.mutation(api.seed.preview, {});
+    await seedParticipant(t, {
+      name: "Custom participant",
+      points: 42,
+      canDate: true
+    });
+    await seedParticipant(t, {
+      name: "Inactive participant",
+      points: 37,
+      canDate: false,
+      isActive: false
+    });
+    await t.run(async (ctx) => {
+      const settings = await ctx.db
+        .query("settings")
+        .withIndex("by_key", (q) => q.eq("key", "event"))
+        .unique();
+      if (!settings) {
+        throw new Error("Settings missing from preview seed.");
+      }
+      await ctx.db.patch(settings._id, { tommieMoney: 3_500 });
+      const tommie = await ctx.db
+        .query("participants")
+        .withIndex("by_seed_key", (q) => q.eq("seedKey", "tommie"))
+        .unique();
+      if (!tommie) {
+        throw new Error("Tommie missing from preview seed.");
+      }
+      await ctx.db.patch(tommie._id, { points: 999, canDate: false });
+    });
+
+    const startResult = await t.mutation(api.trackerAdmin.startNewGame, { adminToken: token });
+
+    const result = await t.query(api.scoreboard.get, {});
+    expect(result.tommieMoney).toBe(0);
+    const participantDocuments = await t.run(async (ctx) =>
+      ctx.db.query("participants").take(100)
+    );
+    expect(startResult).toEqual({
+      participantCount: participantDocuments.length,
+      tommieMoney: 0
+    });
+    expect(
+      participantDocuments.every(
+        (participant) => participant.points === 0 && participant.canDate
+      )
+    ).toBe(true);
+  });
+
+  it("restores seeded values for the production seeder", async () => {
     const t = createTest();
     const token = "admin-session";
     await seedAdminSession(t, token);
@@ -288,6 +341,33 @@ describe("admin tracker mutations", () => {
         points: 10
       })
     ).rejects.toThrow("Admin session is missing or expired.");
+  });
+
+  it("rejects a new game after logout without changing event state", async () => {
+    const t = createTest();
+    const token = "admin-session";
+    const participantId = await seedParticipant(t, { points: 42, canDate: false });
+    await seedAdminSession(t, token);
+    await t.mutation(api.trackerAdmin.adjustMoney, {
+      adminToken: token,
+      delta: 2_500
+    });
+
+    await t.mutation(api.authTokens.logout, { adminToken: token });
+
+    await expect(
+      t.mutation(api.trackerAdmin.startNewGame, { adminToken: token })
+    ).rejects.toThrow("Admin session is missing or expired.");
+
+    const result = await t.query(api.scoreboard.get, {});
+    expect(result.tommieMoney).toBe(2_500);
+    expect(result.participants).toEqual([
+      expect.objectContaining({
+        _id: participantId,
+        points: 42,
+        canDate: false
+      })
+    ]);
   });
 
   it("applies signed score deltas transactionally", async () => {

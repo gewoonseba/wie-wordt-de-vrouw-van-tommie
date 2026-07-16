@@ -6,48 +6,53 @@ import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 
-type ResetStartingStateButtonProps = {
+type StartNewGameButtonProps = {
   adminToken: string;
   onSessionExpired: () => void;
 };
 
-export function ResetStartingStateButton({
+export function StartNewGameButton({
   adminToken,
   onSessionExpired
-}: ResetStartingStateButtonProps) {
-  const reset = useMutation(api.trackerAdmin.resetToStartingState);
-  const [isResetting, setIsResetting] = useState(false);
+}: StartNewGameButtonProps) {
+  const startNewGame = useMutation(api.trackerAdmin.startNewGame);
+  const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function resetStartingState() {
+  async function confirmAndStartNewGame() {
     if (
       !window.confirm(
-        "Reset all participant scores and date flags, and set Tommie's pot back to €1,000?"
+        "Start a new game? This sets all participant scores and Tommie's pot to zero, and enables every date flag."
       )
     ) {
       return;
     }
 
     setError(null);
-    setIsResetting(true);
+    setIsStarting(true);
     try {
-      await reset({ adminToken });
+      await startNewGame({ adminToken });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Could not reset the event state.";
+      const message = error instanceof Error ? error.message : "Could not start a new game.";
       if (message.includes("Admin session is missing or expired")) {
         onSessionExpired();
         return;
       }
       setError(message);
     } finally {
-      setIsResetting(false);
+      setIsStarting(false);
     }
   }
 
   return (
     <div className="flex flex-col items-start gap-2">
-      <Button disabled={isResetting} onClick={() => void resetStartingState()} type="button" variant="destructive">
-        {isResetting ? "Resetten…" : "Startstand herstellen"}
+      <Button
+        disabled={isStarting}
+        onClick={() => void confirmAndStartNewGame()}
+        type="button"
+        variant="destructive"
+      >
+        {isStarting ? "Nieuw spel starten…" : "Nieuw spel starten"}
       </Button>
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
     </div>

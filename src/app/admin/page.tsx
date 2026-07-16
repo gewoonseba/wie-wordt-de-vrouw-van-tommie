@@ -8,7 +8,7 @@ import { api } from "../../../convex/_generated/api";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { MoneyAdjustmentForm } from "@/components/admin/MoneyAdjustmentForm";
 import { ParticipantManager } from "@/components/admin/ParticipantManager";
-import { ResetStartingStateButton } from "@/components/admin/ResetStartingStateButton";
+import { StartNewGameButton } from "@/components/admin/StartNewGameButton";
 import {
   clearAdminToken,
   useAdminToken
@@ -79,13 +79,13 @@ export default function AdminDashboardPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle as="h2">Startstand</CardTitle>
+          <CardTitle as="h2">Nieuw spel</CardTitle>
           <CardDescription>
-            Herstel alle punten, date-statussen en Tommie&apos;s pot naar de ingestelde beginstand.
+            Zet alle punten en Tommie&apos;s pot op nul en sta alle dates weer toe.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ResetStartingStateButton
+          <StartNewGameButton
             adminToken={adminToken}
             onSessionExpired={onSessionExpired}
           />

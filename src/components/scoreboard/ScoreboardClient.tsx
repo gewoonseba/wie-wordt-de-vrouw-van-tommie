@@ -19,6 +19,7 @@ import { MoneyPile } from "@/components/scoreboard/MoneyPile";
 import { ParticipantDetailModal } from "@/components/scoreboard/ParticipantDetailModal";
 import { Podium } from "@/components/scoreboard/Podium";
 import { RankingList } from "@/components/scoreboard/RankingList";
+import { ScoreboardChaos } from "@/components/scoreboard/ScoreboardChaos";
 import { WindowControls } from "@/components/scoreboard/WindowControls";
 import { rankParticipants, selectPodium } from "@/lib/scoreboard";
 import type { ScoreboardParticipant } from "@/lib/scoreboard";
@@ -216,6 +217,11 @@ function ScoreboardContent() {
           <span className="crt-star crt-star-b">✧</span>
           <span className="crt-star crt-star-c">✦</span>
         </div>
+
+        <ScoreboardChaos
+          participants={rankedParticipants}
+          tommieMoney={scoreboard.tommieMoney}
+        />
 
         <header className="crt-hero">
           <p className="crt-kicker">LIVE VANUIT HET VRIJGEZELLENFEEST</p>
